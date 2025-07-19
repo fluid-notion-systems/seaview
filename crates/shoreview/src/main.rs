@@ -1,8 +1,14 @@
 use bevy::prelude::*;
+use smooth_bevy_cameras::{
+    controllers::fps::{FpsCameraBundle, FpsCameraController, FpsCameraPlugin},
+    LookTransform, LookTransformPlugin,
+};
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(LookTransformPlugin)
+        .add_plugins(FpsCameraPlugin::default())
         .add_systems(Startup, setup)
         .run();
 }
@@ -12,11 +18,13 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Add a camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+    // Spawn the FPS camera
+    commands.spawn(FpsCameraBundle::new(
+        FpsCameraController::default(),
+        Vec3::new(-2.0, 5.0, 5.0),
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::Y,
+    ));
 
     // Add a light
     commands.spawn(PointLightBundle {

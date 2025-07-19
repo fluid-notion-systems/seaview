@@ -64,9 +64,9 @@ Currently implementing Phase 1: Foundation and Core Infrastructure
 - [x] Configure development environment
 - [x] Create basic plugin architecture (minimal)
 - [x] Implement minimal Bevy app with 3D scene
-- [ ] Set up basic camera system
+- [x] Set up basic camera system (static camera implemented)
 - [ ] Create simple mesh loading for single files
-- [ ] Implement basic lighting setup
+- [x] Implement basic lighting setup
 
 ## License
 

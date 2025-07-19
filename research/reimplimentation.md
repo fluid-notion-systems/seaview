@@ -18,7 +18,7 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 2. **Basic Rendering Pipeline**
    - [ ] Implement minimal Bevy app with 3D scene
    - [ ] Set up basic camera system (static first)
-   - [ ] Create simple mesh loading for single files
+   - [ ] Create simple mesh loading for single files (nick: just use stl for now, or use a multi-file loader)
    - [ ] Implement basic lighting setup
 
 3. **File System Foundation**
