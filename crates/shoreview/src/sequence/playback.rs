@@ -8,7 +8,32 @@ pub struct SequencePlaybackPlugin;
 
 impl Plugin for SequencePlaybackPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (handle_playback_input, update_playback_ui));
+        app.init_resource::<KeyHoldTimer>()
+            .add_systems(Update, (handle_playback_input, update_playback_ui));
+    }
+}
+
+/// Resource for tracking key hold timing
+#[derive(Resource)]
+struct KeyHoldTimer {
+    /// Time since arrow key was first pressed
+    arrow_hold_time: f32,
+    /// Last frame change time
+    last_frame_change: f32,
+    /// Initial delay before repeat starts
+    initial_delay: f32,
+    /// Repeat interval
+    repeat_interval: f32,
+}
+
+impl Default for KeyHoldTimer {
+    fn default() -> Self {
+        Self {
+            arrow_hold_time: 0.0,
+            last_frame_change: 0.0,
+            initial_delay: 0.5,    // 500ms before repeat starts
+            repeat_interval: 0.05, // 50ms between frames when holding (20 fps)
+        }
     }
 }
 
@@ -17,6 +42,8 @@ fn handle_playback_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut sequence_manager: ResMut<SequenceManager>,
     mut events: EventWriter<SequenceEvent>,
+    time: Res<Time>,
+    mut key_timer: ResMut<KeyHoldTimer>,
 ) {
     // Debug: Log all pressed keys
     for key in keyboard.get_just_pressed() {
@@ -68,38 +95,70 @@ fn handle_playback_input(
         }
     }
 
-    // Right arrow - next frame
-    if keyboard.just_pressed(KeyCode::ArrowRight) {
-        info!("Right arrow pressed - advancing frame");
+    // Handle arrow key holding for continuous frame advancement
+    let arrow_right_held = keyboard.pressed(KeyCode::ArrowRight);
+    let arrow_left_held = keyboard.pressed(KeyCode::ArrowLeft);
+
+    if arrow_right_held || arrow_left_held {
         // Stop playback when manually stepping
         if sequence_manager.is_playing {
             sequence_manager.is_playing = false;
             events.write(SequenceEvent::PlaybackStopped);
         }
 
-        if sequence_manager.next_frame() {
-            info!("Advanced to frame {}", sequence_manager.current_frame);
-            events.write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
-        } else {
-            info!("Cannot advance further - at end of sequence");
-        }
-    }
+        // If just pressed, reset timer and immediately advance
+        if keyboard.just_pressed(KeyCode::ArrowRight) || keyboard.just_pressed(KeyCode::ArrowLeft) {
+            key_timer.arrow_hold_time = 0.0;
+            key_timer.last_frame_change = 0.0;
 
-    // Left arrow - previous frame
-    if keyboard.just_pressed(KeyCode::ArrowLeft) {
-        info!("Left arrow pressed - going to previous frame");
-        // Stop playback when manually stepping
-        if sequence_manager.is_playing {
-            sequence_manager.is_playing = false;
-            events.write(SequenceEvent::PlaybackStopped);
-        }
-
-        if sequence_manager.previous_frame() {
-            info!("Went back to frame {}", sequence_manager.current_frame);
-            events.write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
+            // Immediate frame change
+            if arrow_right_held {
+                info!("Right arrow pressed - advancing frame");
+                if sequence_manager.next_frame() {
+                    info!("Advanced to frame {}", sequence_manager.current_frame);
+                    events.write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
+                } else {
+                    info!("Cannot advance further - at end of sequence");
+                }
+            } else {
+                info!("Left arrow pressed - going to previous frame");
+                if sequence_manager.previous_frame() {
+                    info!("Went back to frame {}", sequence_manager.current_frame);
+                    events.write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
+                } else {
+                    info!("Cannot go back further - at beginning of sequence");
+                }
+            }
         } else {
-            info!("Cannot go back further - at beginning of sequence");
+            // Key is being held - accumulate time
+            key_timer.arrow_hold_time += time.delta_secs();
+
+            // Check if we should repeat
+            if key_timer.arrow_hold_time >= key_timer.initial_delay {
+                // We're in repeat mode
+                let time_since_last = key_timer.arrow_hold_time - key_timer.last_frame_change;
+
+                if time_since_last >= key_timer.repeat_interval {
+                    key_timer.last_frame_change = key_timer.arrow_hold_time;
+
+                    if arrow_right_held {
+                        if sequence_manager.next_frame() {
+                            events
+                                .write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
+                        }
+                    } else {
+                        if sequence_manager.previous_frame() {
+                            events
+                                .write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
+                        }
+                    }
+                }
+            }
         }
+    } else {
+        // No arrow keys held - reset timer
+        key_timer.arrow_hold_time = 0.0;
+        key_timer.last_frame_change = 0.0;
     }
 
     // Home - jump to first frame
