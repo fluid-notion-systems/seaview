@@ -30,7 +30,7 @@ pub fn camera_controller(
     // Don't process camera controls if in escape mode
     if fps_camera.escape_mode {
         // Clear mouse events to prevent them from accumulating
-        for _ in mouse_events.read() {}
+        mouse_events.clear();
         return;
     }
 
