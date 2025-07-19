@@ -15,65 +15,68 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let v6 = Vector::new([1.0, 1.0, 1.0]);
     let v7 = Vector::new([-1.0, 1.0, 1.0]);
 
-    // Front face (z = -1)
+    // Front face (z = -1) - facing viewer, counterclockwise from outside
     triangles.push(Triangle {
         normal: Vector::new([0.0, 0.0, -1.0]),
-        vertices: [v0, v1, v2],
+        vertices: [v0, v2, v1],
     });
     triangles.push(Triangle {
         normal: Vector::new([0.0, 0.0, -1.0]),
-        vertices: [v0, v2, v3],
+        vertices: [v0, v3, v2],
     });
 
-    // Back face (z = 1)
+    // Back face (z = 1) - facing away, counterclockwise from outside
     triangles.push(Triangle {
         normal: Vector::new([0.0, 0.0, 1.0]),
-        vertices: [v4, v6, v5],
+        vertices: [v4, v5, v6],
     });
     triangles.push(Triangle {
         normal: Vector::new([0.0, 0.0, 1.0]),
-        vertices: [v4, v7, v6],
+        vertices: [v4, v6, v7],
     });
 
-    // Left face (x = -1)
+    // Left face (x = -1) - counterclockwise from outside
     triangles.push(Triangle {
         normal: Vector::new([-1.0, 0.0, 0.0]),
-        vertices: [v0, v3, v7],
+        vertices: [v0, v4, v7],
     });
     triangles.push(Triangle {
         normal: Vector::new([-1.0, 0.0, 0.0]),
-        vertices: [v0, v7, v4],
+        vertices: [v0, v7, v3],
     });
 
-    // Right face (x = 1)
+    // Right face (x = 1) - counterclockwise from outside
     triangles.push(Triangle {
         normal: Vector::new([1.0, 0.0, 0.0]),
-        vertices: [v1, v5, v6],
+        vertices: [v1, v2, v6],
     });
     triangles.push(Triangle {
         normal: Vector::new([1.0, 0.0, 0.0]),
-        vertices: [v1, v6, v2],
+        vertices: [v1, v6, v5],
     });
 
-    // Bottom face (y = -1)
+    // Bottom face (y = -1) - counterclockwise from below
     triangles.push(Triangle {
         normal: Vector::new([0.0, -1.0, 0.0]),
-        vertices: [v0, v4, v5],
+        vertices: [v0, v1, v5],
     });
     triangles.push(Triangle {
         normal: Vector::new([0.0, -1.0, 0.0]),
-        vertices: [v0, v5, v1],
+        vertices: [v0, v5, v4],
     });
 
-    // Top face (y = 1)
+    // Top face (y = 1) - counterclockwise from above
     triangles.push(Triangle {
         normal: Vector::new([0.0, 1.0, 0.0]),
-        vertices: [v3, v2, v6],
+        vertices: [v3, v7, v6],
     });
     triangles.push(Triangle {
         normal: Vector::new([0.0, 1.0, 0.0]),
-        vertices: [v3, v6, v7],
+        vertices: [v3, v6, v2],
     });
+
+    // Create directory if it doesn't exist
+    std::fs::create_dir_all("test_models")?;
 
     // Write to file
     let mut file = File::create("test_models/cube.stl")?;
@@ -91,32 +94,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let base4 = Vector::new([-1.0, 0.0, 1.0]);
     let apex = Vector::new([0.0, 2.0, 0.0]);
 
-    // Base (two triangles)
+    // Base (two triangles) - facing down, clockwise from below (counterclockwise from above)
     pyramid_triangles.push(Triangle {
         normal: Vector::new([0.0, -1.0, 0.0]),
-        vertices: [base1, base3, base2],
+        vertices: [base1, base2, base3],
     });
     pyramid_triangles.push(Triangle {
         normal: Vector::new([0.0, -1.0, 0.0]),
-        vertices: [base1, base4, base3],
+        vertices: [base1, base3, base4],
     });
 
-    // Side faces
+    // Side faces - counterclockwise from outside
     pyramid_triangles.push(Triangle {
-        normal: calculate_normal(&base1, &base2, &apex),
-        vertices: [base1, base2, apex],
+        normal: calculate_normal(&base1, &apex, &base2),
+        vertices: [base1, apex, base2],
     });
     pyramid_triangles.push(Triangle {
-        normal: calculate_normal(&base2, &base3, &apex),
-        vertices: [base2, base3, apex],
+        normal: calculate_normal(&base2, &apex, &base3),
+        vertices: [base2, apex, base3],
     });
     pyramid_triangles.push(Triangle {
-        normal: calculate_normal(&base3, &base4, &apex),
-        vertices: [base3, base4, apex],
+        normal: calculate_normal(&base3, &apex, &base4),
+        vertices: [base3, apex, base4],
     });
     pyramid_triangles.push(Triangle {
-        normal: calculate_normal(&base4, &base1, &apex),
-        vertices: [base4, base1, apex],
+        normal: calculate_normal(&base4, &apex, &base1),
+        vertices: [base4, apex, base1],
     });
 
     let mut pyramid_file = File::create("test_models/pyramid.stl")?;
