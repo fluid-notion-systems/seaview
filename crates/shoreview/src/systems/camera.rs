@@ -83,17 +83,31 @@ pub fn camera_controller(
     if input.pressed(KeyCode::KeyD) {
         movement += *transform.right();
     }
-    if input.pressed(KeyCode::Space) {
-        movement += Vec3::Y;
+
+    // Handle vertical movement separately to preserve modifier effect
+    let mut vertical_movement = 0.0;
+    let vertical_modifier = if input.pressed(KeyCode::AltLeft) {
+        0.1
+    } else {
+        1.0
+    };
+
+    if input.pressed(KeyCode::KeyE) {
+        vertical_movement += vertical_modifier;
     }
-    if input.pressed(KeyCode::ShiftLeft) {
-        movement -= Vec3::Y;
+    if input.pressed(KeyCode::KeyQ) {
+        vertical_movement -= vertical_modifier;
     }
 
-    // Apply movement
+    // Apply horizontal movement
     if movement != Vec3::ZERO {
         movement = movement.normalize();
         transform.translation += movement * speed * time.delta_seconds();
+    }
+
+    // Apply vertical movement separately
+    if vertical_movement != 0.0 {
+        transform.translation.y += vertical_movement * speed * time.delta_seconds();
     }
 }
 

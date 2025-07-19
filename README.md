@@ -71,8 +71,9 @@ Currently implementing Phase 1: Foundation and Core Infrastructure
 
 ### Camera Controls
 - **WASD**: Move camera forward/backward/left/right
-- **Space**: Move up
-- **Left Shift**: Move down
+- **Q**: Move up
+- **E**: Move down
+- **Alt + Q/E**: Move up/down at half speed (for precise positioning)
 - **Mouse**: Look around (click to grab cursor, Esc to release)
 - **Escape Mode**: When Esc is pressed, all camera controls are disabled until you click again
 
