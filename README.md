@@ -64,9 +64,17 @@ Currently implementing Phase 1: Foundation and Core Infrastructure
 - [x] Configure development environment
 - [x] Create basic plugin architecture (minimal)
 - [x] Implement minimal Bevy app with 3D scene
-- [x] Set up basic camera system (static camera implemented)
+- [x] Set up FPS camera system with WASD controls
+- [x] Mouse look controls with cursor grab/release
 - [ ] Create simple mesh loading for single files
 - [x] Implement basic lighting setup
+
+### Camera Controls
+- **WASD**: Move camera forward/backward/left/right
+- **Space**: Move up
+- **Left Shift**: Move down
+- **Mouse**: Look around (click to grab cursor, Esc to release)
+- **Escape Mode**: When Esc is pressed, all camera controls are disabled until you click again
 
 ## License
 

@@ -1,15 +1,14 @@
 use bevy::prelude::*;
-use smooth_bevy_cameras::{
-    controllers::fps::{FpsCameraBundle, FpsCameraController, FpsCameraPlugin},
-    LookTransform, LookTransformPlugin,
-};
+
+mod systems;
+
+use systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(LookTransformPlugin)
-        .add_plugins(FpsCameraPlugin::default())
         .add_systems(Startup, setup)
+        .add_systems(Update, (camera_controller, cursor_grab_system))
         .run();
 }
 
@@ -19,11 +18,12 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Spawn the FPS camera
-    commands.spawn(FpsCameraBundle::new(
-        FpsCameraController::default(),
-        Vec3::new(-2.0, 5.0, 5.0),
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::Y,
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_xyz(-2.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            ..default()
+        },
+        FpsCamera::default(),
     ));
 
     // Add a light

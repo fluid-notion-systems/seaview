@@ -6,4 +6,3 @@ authors.workspace = true
 
 [dependencies]
 bevy = { workspace = true }
-smooth-bevy-cameras = { workspace = true }
