@@ -7,6 +7,8 @@ pub mod discovery;
 pub mod loader;
 pub mod playback;
 
+pub use loader::LoadingState;
+
 use bevy::prelude::*;
 use std::path::PathBuf;
 

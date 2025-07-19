@@ -10,7 +10,7 @@ use cli::Args;
 use sequence::{discovery::DiscoverSequenceRequest, SequenceManager, SequencePlugin};
 use systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
 use systems::stl_loader::{StlFilePath, StlLoaderPlugin};
-use ui::UiPlugin;
+use ui::UIPlugin;
 
 fn main() {
     // Parse command line arguments
@@ -27,7 +27,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(StlLoaderPlugin)
         .add_plugins(SequencePlugin)
-        .add_plugins(UiPlugin)
+        .add_plugins(UIPlugin)
         .add_plugins(BrpExtrasPlugin)
         .insert_resource(StlFilePath(args.path.clone()))
         .add_systems(Startup, (setup, handle_input_path))

@@ -3,6 +3,7 @@
 use super::{SequenceEvent, SequenceManager};
 use crate::systems::stl_loader::StlFilePath;
 use bevy::prelude::*;
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -14,9 +15,16 @@ impl Plugin for SequenceLoaderPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<MeshCache>()
             .init_resource::<LoaderConfig>()
+            .init_resource::<LoadingState>()
             .add_systems(
                 Update,
-                (handle_frame_changes, prefetch_frames, cleanup_cache).chain(),
+                (
+                    preload_sequence_meshes,
+                    handle_frame_changes,
+                    prefetch_frames,
+                    cleanup_cache,
+                )
+                    .chain(),
             );
     }
 }
@@ -37,10 +45,72 @@ pub struct LoaderConfig {
 impl Default for LoaderConfig {
     fn default() -> Self {
         Self {
-            cache_size: 50,
-            prefetch_ahead: 5,
-            keep_behind: 2,
+            cache_size: 100, // Increased for large sequences
+            prefetch_ahead: 10,
+            keep_behind: 5,
             async_loading: true,
+        }
+    }
+}
+
+/// State for tracking sequence preloading
+#[derive(Resource, Default)]
+pub struct LoadingState {
+    /// Whether preloading is active
+    pub is_preloading: bool,
+    /// Total frames to preload
+    pub total_frames: usize,
+    /// Number of frames loaded
+    pub frames_loaded: usize,
+    /// Frames currently being loaded
+    pub loading_queue: Vec<PathBuf>,
+    /// Start time of preloading
+    pub start_time: Option<std::time::Instant>,
+}
+
+impl LoadingState {
+    pub fn start_preloading(&mut self, total_frames: usize) {
+        self.is_preloading = true;
+        self.total_frames = total_frames;
+        self.frames_loaded = 0;
+        self.loading_queue.clear();
+        self.start_time = Some(std::time::Instant::now());
+        info!("Starting preload of {} frames", total_frames);
+    }
+
+    pub fn finish_preloading(&mut self) {
+        self.is_preloading = false;
+        if let Some(start) = self.start_time {
+            let duration = start.elapsed();
+            info!(
+                "Preloading complete: {} frames in {:.2}s ({:.1} fps)",
+                self.frames_loaded,
+                duration.as_secs_f64(),
+                self.frames_loaded as f64 / duration.as_secs_f64()
+            );
+        }
+    }
+
+    pub fn progress(&self) -> f32 {
+        if self.total_frames > 0 {
+            self.frames_loaded as f32 / self.total_frames as f32
+        } else {
+            0.0
+        }
+    }
+
+    pub fn progress_text(&self) -> String {
+        if self.is_preloading {
+            format!(
+                "Loading: {}/{} ({:.0}%)",
+                self.frames_loaded,
+                self.total_frames,
+                self.progress() * 100.0
+            )
+        } else if self.frames_loaded > 0 {
+            format!("Loaded: {} frames", self.frames_loaded)
+        } else {
+            "Ready".to_string()
         }
     }
 }
@@ -150,6 +220,72 @@ pub struct CacheStats {
     pub total_memory: usize,
 }
 
+/// System to preload all sequence meshes at startup
+fn preload_sequence_meshes(
+    mut sequence_manager: ResMut<SequenceManager>,
+    mut mesh_cache: ResMut<MeshCache>,
+    mut loading_state: ResMut<LoadingState>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    config: Res<LoaderConfig>,
+    time: Res<Time>,
+) {
+    // Check if we need to start preloading
+    if !loading_state.is_preloading {
+        if let Some(sequence) = &sequence_manager.current_sequence {
+            if loading_state.total_frames == 0 {
+                // Initialize preloading
+                loading_state.start_preloading(sequence.frame_count());
+
+                // Queue all frames for loading
+                for i in 0..sequence.frame_count() {
+                    if let Some(path) = sequence.frame_path(i) {
+                        loading_state.loading_queue.push(path.to_path_buf());
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+    // Load frames in batches to avoid blocking
+    // Use fewer frames per update for large files to maintain responsiveness
+    let frames_per_update = if loading_state.frames_loaded < 5 {
+        1 // Load first few frames slowly to gauge performance
+    } else {
+        2 // Then adjust based on file size
+    };
+    let mut loaded_this_frame = 0;
+
+    while loaded_this_frame < frames_per_update && !loading_state.loading_queue.is_empty() {
+        if let Some(path) = loading_state.loading_queue.pop() {
+            let frame_index = loading_state.total_frames - loading_state.loading_queue.len() - 1;
+
+            if mesh_cache
+                .get_or_load(&path, frame_index, &mut meshes, &mut materials)
+                .is_some()
+            {
+                loading_state.frames_loaded += 1;
+                loaded_this_frame += 1;
+
+                // Log progress every 10%
+                let progress = loading_state.progress();
+                if (progress * 10.0) as u32 > ((progress - 0.1) * 10.0) as u32 {
+                    info!("{}", loading_state.progress_text());
+                }
+            }
+        }
+    }
+
+    // Check if preloading is complete
+    if loading_state.loading_queue.is_empty() {
+        loading_state.finish_preloading();
+
+        // Ensure cache size is respected
+        mesh_cache.evict_lru(config.cache_size);
+    }
+}
+
 /// System that handles frame changes and loads new meshes
 fn handle_frame_changes(
     mut commands: Commands,
@@ -160,7 +296,13 @@ fn handle_frame_changes(
     mut events: EventWriter<SequenceEvent>,
     time: Res<Time>,
     config: Res<LoaderConfig>,
+    loading_state: Res<LoadingState>,
 ) {
+    // Don't update frames while preloading
+    if loading_state.is_preloading {
+        return;
+    }
+
     // Handle playback
     if sequence_manager.is_playing {
         let delta = time.delta_secs();
@@ -229,14 +371,19 @@ fn handle_frame_changes(
     mesh_cache.evict_lru(config.cache_size);
 }
 
-/// System that prefetches upcoming frames
+/// System to prefetch upcoming frames
 fn prefetch_frames(
     sequence_manager: Res<SequenceManager>,
     mut mesh_cache: ResMut<MeshCache>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     config: Res<LoaderConfig>,
+    loading_state: Res<LoadingState>,
 ) {
+    // Skip prefetching during initial preload
+    if loading_state.is_preloading {
+        return;
+    }
     if let Some(sequence) = sequence_manager.current_sequence() {
         let current = sequence_manager.current_frame;
 
