@@ -22,6 +22,15 @@ Research and evaluation of available Bevy camera controller plugins for implemen
 - Custom implementation strategy
 - **Status**: Research complete, implementation pending
 
+### [Mesh File Loading Research](./mesh-loading.md)
+Research on implementing multi-format mesh file loading in Bevy, with immediate focus on STL support. Covers:
+
+- Native Bevy asset system architecture
+- Third-party format support (STL, PLY, OBJ)
+- Implementation strategies and code examples
+- Performance considerations
+- **Status**: Research complete, ready for implementation
+
 ## Project Status
 
 Currently in **Phase 1: Foundation and Core Infrastructure**

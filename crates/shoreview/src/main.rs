@@ -1,12 +1,27 @@
 use bevy::prelude::*;
 
+mod cli;
 mod systems;
 
+use cli::Args;
 use systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
+use systems::stl_loader::{StlFilePath, StlLoaderPlugin};
 
 fn main() {
+    // Parse command line arguments
+    let args = Args::parse_args();
+
+    if args.verbose {
+        info!("Starting Shoreview mesh viewer...");
+        if let Some(ref path) = args.stl_file {
+            info!("STL file to load: {:?}", path);
+        }
+    }
+
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(StlLoaderPlugin)
+        .insert_resource(StlFilePath(args.stl_file))
         .add_systems(Startup, setup)
         .add_systems(Update, (camera_controller, cursor_grab_system))
         .run();
@@ -29,7 +44,7 @@ fn setup(
     // Add a light
     commands.spawn(PointLightBundle {
         point_light: PointLight {
-            intensity: 1500.0,
+            intensity: 2000.0,
             shadows_enabled: true,
             ..default()
         },
@@ -37,18 +52,24 @@ fn setup(
         ..default()
     });
 
-    // Add a cube
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Cuboid::new(2.0, 2.0, 2.0))),
-        material: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.5, 0.5, 1.0),
+    // Add another light from a different angle
+    commands.spawn(PointLightBundle {
+        point_light: PointLight {
+            intensity: 1500.0,
+            shadows_enabled: false,
             ..default()
-        }),
-        transform: Transform::from_xyz(0.0, 0.0, 0.0),
+        },
+        transform: Transform::from_xyz(-4.0, 6.0, -4.0),
         ..default()
     });
 
-    // Add a plane
+    // Add ambient light for better visibility
+    commands.insert_resource(AmbientLight {
+        color: Color::WHITE,
+        brightness: 80.0,
+    });
+
+    // Add a ground plane
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(Plane3d::default().mesh().size(10.0, 10.0))),
         material: materials.add(StandardMaterial {
