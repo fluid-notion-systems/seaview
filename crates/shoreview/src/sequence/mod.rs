@@ -26,7 +26,7 @@ impl Plugin for SequencePlugin {
 }
 
 /// Resource that manages the current sequence state
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct SequenceManager {
     /// Currently loaded sequence, if any
     pub current_sequence: Option<Sequence>,
@@ -36,6 +36,8 @@ pub struct SequenceManager {
     pub is_playing: bool,
     /// Playback speed (frames per second)
     pub playback_fps: f32,
+    /// Timer for frame advancement
+    pub frame_timer: f32,
 }
 
 impl SequenceManager {
@@ -45,9 +47,24 @@ impl SequenceManager {
             current_frame: 0,
             is_playing: false,
             playback_fps: 30.0,
+            frame_timer: 0.0,
         }
     }
+}
 
+impl Default for SequenceManager {
+    fn default() -> Self {
+        Self {
+            current_sequence: None,
+            current_frame: 0,
+            is_playing: false,
+            playback_fps: 30.0,
+            frame_timer: 0.0,
+        }
+    }
+}
+
+impl SequenceManager {
     /// Load a new sequence
     pub fn load_sequence(&mut self, sequence: Sequence) {
         self.current_sequence = Some(sequence);

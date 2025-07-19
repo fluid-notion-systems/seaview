@@ -18,23 +18,59 @@ fn handle_playback_input(
     mut sequence_manager: ResMut<SequenceManager>,
     mut events: EventWriter<SequenceEvent>,
 ) {
+    // Debug: Log all pressed keys
+    for key in keyboard.get_just_pressed() {
+        info!("Key pressed: {:?}", key);
+    }
+
+    // Debug: Log current keyboard state every second
+    static mut LAST_DEBUG: f64 = 0.0;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs_f64();
+    unsafe {
+        if now - LAST_DEBUG > 1.0 {
+            LAST_DEBUG = now;
+            let pressed_keys: Vec<_> = keyboard.get_pressed().collect();
+            info!("Debug: Currently pressed keys: {:?}", pressed_keys);
+            info!(
+                "Debug: Sequence loaded: {}",
+                sequence_manager.current_sequence.is_some()
+            );
+            if let Some(seq) = &sequence_manager.current_sequence {
+                info!(
+                    "Debug: Current frame: {}/{}, Playing: {}",
+                    sequence_manager.current_frame,
+                    seq.frame_count(),
+                    sequence_manager.is_playing
+                );
+            }
+        }
+    }
+
     // Only process input if we have a sequence loaded
     if sequence_manager.current_sequence.is_none() {
+        info!("No sequence loaded, ignoring input");
         return;
     }
 
     // Space bar - toggle play/pause
     if keyboard.just_pressed(KeyCode::Space) {
+        info!("Space pressed - toggling playback");
         sequence_manager.toggle_playback();
         if sequence_manager.is_playing {
+            info!("Starting playback");
             events.write(SequenceEvent::PlaybackStarted);
         } else {
+            info!("Stopping playback");
             events.write(SequenceEvent::PlaybackStopped);
         }
     }
 
     // Right arrow - next frame
     if keyboard.just_pressed(KeyCode::ArrowRight) {
+        info!("Right arrow pressed - advancing frame");
         // Stop playback when manually stepping
         if sequence_manager.is_playing {
             sequence_manager.is_playing = false;
@@ -42,12 +78,16 @@ fn handle_playback_input(
         }
 
         if sequence_manager.next_frame() {
+            info!("Advanced to frame {}", sequence_manager.current_frame);
             events.write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
+        } else {
+            info!("Cannot advance further - at end of sequence");
         }
     }
 
     // Left arrow - previous frame
     if keyboard.just_pressed(KeyCode::ArrowLeft) {
+        info!("Left arrow pressed - going to previous frame");
         // Stop playback when manually stepping
         if sequence_manager.is_playing {
             sequence_manager.is_playing = false;
@@ -55,7 +95,10 @@ fn handle_playback_input(
         }
 
         if sequence_manager.previous_frame() {
+            info!("Went back to frame {}", sequence_manager.current_frame);
             events.write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
+        } else {
+            info!("Cannot go back further - at beginning of sequence");
         }
     }
 

@@ -163,21 +163,39 @@ fn handle_frame_changes(
 ) {
     // Handle playback
     if sequence_manager.is_playing {
+        let delta = time.delta_secs();
         let frame_duration = 1.0 / sequence_manager.playback_fps;
-        let elapsed = time.elapsed_secs_f64();
 
-        // Simple frame timing - could be improved with accumulator
-        static mut LAST_FRAME_TIME: f64 = 0.0;
-        unsafe {
-            if elapsed - LAST_FRAME_TIME >= frame_duration as f64 {
-                LAST_FRAME_TIME = elapsed;
-                if !sequence_manager.next_frame() {
-                    // Loop back to start
-                    sequence_manager.jump_to_frame(0);
-                }
-                events.write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
+        // Accumulate time
+        sequence_manager.frame_timer += delta;
+
+        info!(
+            "Debug playback: delta={:.3}, fps={}, frame_duration={:.3}, timer={:.3}",
+            delta, sequence_manager.playback_fps, frame_duration, sequence_manager.frame_timer
+        );
+
+        // Check if it's time to advance to the next frame
+        if sequence_manager.frame_timer >= frame_duration {
+            info!("Debug: Time to advance frame!");
+
+            // Reset timer, keeping any excess time
+            sequence_manager.frame_timer -= frame_duration;
+
+            if !sequence_manager.next_frame() {
+                info!("Debug: End of sequence, looping to start");
+                // Loop back to start
+                sequence_manager.jump_to_frame(0);
+            } else {
+                info!(
+                    "Debug: Advanced to frame {}",
+                    sequence_manager.current_frame
+                );
             }
+            events.send(SequenceEvent::FrameChanged(sequence_manager.current_frame));
         }
+    } else {
+        // Reset timer when not playing
+        sequence_manager.frame_timer = 0.0;
     }
 
     // Load current frame mesh
