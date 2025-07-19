@@ -8,7 +8,7 @@ edition = "2021"
 authors = ["Shoreview Contributors"]
 
 [workspace.dependencies]
-bevy = { version = "0.14", default-features = false, features = [
+bevy = { version = "0.16", default-features = false, features = [
     "bevy_asset",
     "bevy_core_pipeline",
     "bevy_pbr",
@@ -23,6 +23,7 @@ bevy = { version = "0.14", default-features = false, features = [
     "tonemapping_luts",
     "default_font",
     "png",
+    "bevy_remote",
 ] }
 
 [profile.dev]

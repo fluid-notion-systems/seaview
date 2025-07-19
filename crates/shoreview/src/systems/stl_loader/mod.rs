@@ -46,14 +46,12 @@ fn load_stl_file(
                         });
 
                         // Spawn the mesh entity
-                        commands
-                            .spawn(PbrBundle {
-                                mesh: meshes.add(mesh),
-                                material,
-                                transform: Transform::from_xyz(0.0, 0.0, 0.0),
-                                ..default()
-                            })
-                            .insert(Name::new("STL Model"));
+                        commands.spawn((
+                            Mesh3d(meshes.add(mesh)),
+                            MeshMaterial3d(material),
+                            Transform::from_xyz(0.0, 0.0, 0.0),
+                            Name::new("STL Model"),
+                        ));
                     }
                     Err(e) => {
                         error!("Failed to parse STL file: {}", e);
@@ -76,14 +74,12 @@ fn load_stl_file(
             ..default()
         });
 
-        commands
-            .spawn(PbrBundle {
-                mesh,
-                material,
-                transform: Transform::from_xyz(0.0, 0.0, 0.0),
-                ..default()
-            })
-            .insert(Name::new("Demo Cube"));
+        commands.spawn((
+            Mesh3d(mesh),
+            MeshMaterial3d(material),
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            Name::new("Demo Cube"),
+        ));
     }
 }
 

@@ -25,7 +25,9 @@ pub fn camera_controller(
     input: Res<ButtonInput<KeyCode>>,
     mut query: Query<(&mut Transform, &FpsCamera), With<Camera>>,
 ) {
-    let (mut transform, fps_camera) = query.single_mut();
+    let Ok((mut transform, fps_camera)) = query.single_mut() else {
+        return;
+    };
 
     // Don't process camera controls if in escape mode
     if fps_camera.escape_mode {
@@ -102,12 +104,12 @@ pub fn camera_controller(
     // Apply horizontal movement
     if movement != Vec3::ZERO {
         movement = movement.normalize();
-        transform.translation += movement * speed * time.delta_seconds();
+        transform.translation += movement * speed * time.delta_secs();
     }
 
     // Apply vertical movement separately
     if vertical_movement != 0.0 {
-        transform.translation.y += vertical_movement * speed * time.delta_seconds();
+        transform.translation.y += vertical_movement * speed * time.delta_secs();
     }
 }
 
@@ -117,20 +119,24 @@ pub fn cursor_grab_system(
     key_input: Res<ButtonInput<KeyCode>>,
     mut camera_query: Query<&mut FpsCamera, With<Camera>>,
 ) {
-    let mut window = windows.single_mut();
-    let mut fps_camera = camera_query.single_mut();
+    let Ok(mut window) = windows.single_mut() else {
+        return;
+    };
+    let Ok(mut fps_camera) = camera_query.single_mut() else {
+        return;
+    };
 
     if input.just_pressed(MouseButton::Left) {
         // Grab cursor when left mouse button is pressed
-        window.cursor.visible = false;
-        window.cursor.grab_mode = CursorGrabMode::Locked;
+        window.cursor_options.visible = false;
+        window.cursor_options.grab_mode = CursorGrabMode::Locked;
         fps_camera.escape_mode = false;
     }
 
     if key_input.just_pressed(KeyCode::Escape) {
         // Release cursor when Escape is pressed
-        window.cursor.visible = true;
-        window.cursor.grab_mode = CursorGrabMode::None;
+        window.cursor_options.visible = true;
+        window.cursor_options.grab_mode = CursorGrabMode::None;
         fps_camera.escape_mode = true;
     }
 }
