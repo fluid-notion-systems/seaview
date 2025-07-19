@@ -4,9 +4,9 @@
 
 This document outlines a phased approach to reimplementing mesh-ripper functionality using modern Rust and Bevy (0.14+). The goal is to create a modular, maintainable, and performant mesh sequence viewer while addressing the limitations of the original implementation.
 
-## Phase 1: Foundation and Core Infrastructure
-**Duration: 2-3 weeks**
-**Goal: Establish project structure and basic rendering**
+## Phase 1: Foundation with Multi-Format Mesh Support
+**Duration: 4-5 weeks**
+**Goal: Establish project structure, basic rendering, and support multiple mesh formats**
 
 ### Milestones:
 1. **Project Setup**
@@ -18,64 +18,58 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 2. **Basic Rendering Pipeline**
    - [ ] Implement minimal Bevy app with 3D scene
    - [ ] Set up basic camera system (static first)
-   - [ ] Create simple mesh loading for single files (nick: just use stl for now, or use a multi-file loader)
    - [ ] Implement basic lighting setup
+   - [ ] Create ground plane and reference objects
 
-3. **File System Foundation**
-   - [ ] Design file discovery trait/interface
-   - [ ] Implement directory scanning
-   - [ ] Create file type detection system
-   - [ ] Build path management utilities
 
-### Deliverables:
-- Basic app that can load and display a single mesh file
-- Modular plugin structure
-- File system utilities
 
-## Phase 2: Multi-Format Mesh Support
-**Duration: 2-3 weeks**
-**Goal: Support multiple mesh formats with proper abstraction**
-
-### Milestones:
-1. **Mesh Format Abstraction**
+<!-- 4. **Mesh Format Abstraction**
    - [ ] Design unified mesh loading interface
    - [ ] Create mesh format detection system
    - [ ] Implement error handling for loading
+   - [ ] Create plugin system for format loaders
 
-2. **Format Implementations**
+5. **Format Implementations**
+   - [x] STL loader (already implemented)
    - [ ] PLY loader (using bevy_ply or custom)
    - [ ] OBJ loader with normals/UV support
-   - [ ] STL loader
    - [ ] GLTF/GLB support (bonus)
 
-3. **Mesh Processing Pipeline**
+6. **Mesh Processing Pipeline**
    - [ ] Vertex/index buffer management
    - [ ] Normal calculation for formats lacking them
    - [ ] Bounding box calculation
    - [ ] Basic mesh statistics
+   - [ ] Mesh validation and repair -->
 
 ### Deliverables:
-- Support for loading PLY, OBJ, STL files
+- Basic app that can load and display stl
+- Modular plugin structure with format loader plugins
+- File system utilities
 - Unified mesh representation
 - Mesh processing utilities
 
-## Phase 3: Sequence Management
+## Phase 2: Sequence Management
 **Duration: 3-4 weeks**
 **Goal: Handle mesh sequences efficiently**
 
 ### Milestones:
-1. **Sequence Discovery**
+1. **File System Foundation**
+   - [ ] Design file discovery trait/interface
+   - [ ] Implement directory scanning
+   - [ ] Build path management utilities
+2. **Sequence Discovery**
    - [ ] Pattern-based sequence detection
    - [ ] Frame number extraction
    - [ ] Sequence validation
 
-2. **Memory Management**
+3. **Memory Management**
    - [ ] Implement mesh pool with configurable size
    - [ ] LRU cache for loaded meshes
    - [ ] Preloading/prefetching system
    - [ ] Memory usage monitoring
 
-3. **Playback System**
+4. **Playback System**
    - [ ] Timeline representation
    - [ ] Play/pause/stop controls
    - [ ] Frame rate control
@@ -86,14 +80,14 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 - Smooth playback of sequences
 - Memory-conscious design
 
-## Phase 4: Advanced Camera System
+## Phase 3: Advanced Camera System
 **Duration: 3-4 weeks**
 **Goal: Implement FPS-style camera with recording/playback**
 
 ### Milestones:
 1. **Interactive Camera**
-   - [ ] FPS-style mouse look
-   - [ ] WASD movement
+   - [x] FPS-style mouse look (already implemented)
+   - [x] WASD movement (already implemented)
    - [ ] Speed modifiers
    - [ ] Smooth movement interpolation
 
@@ -114,7 +108,7 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 - Camera recording and playback
 - Camera path visualization
 
-## Phase 5: Particle and Point Cloud Rendering
+## Phase 4: Particle and Point Cloud Rendering
 **Duration: 2-3 weeks**
 **Goal: Efficient rendering of particle data**
 
@@ -140,7 +134,7 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 - Visual options for scientific data
 - Performance optimization
 
-## Phase 6: User Interface and Configuration
+## Phase 5: User Interface and Configuration
 **Duration: 2-3 weeks**
 **Goal: Create intuitive UI and persistent configuration**
 
@@ -167,7 +161,7 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 - Persistent configuration
 - User-friendly controls
 
-## Phase 7: Level of Detail and Performance
+## Phase 6: Level of Detail and Performance
 **Duration: 2-3 weeks**
 **Goal: Optimize for large datasets**
 
@@ -195,7 +189,7 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 - Non-blocking asset loading
 - Performance analytics
 
-## Phase 8: Advanced Features and Polish
+## Phase 7: Advanced Features and Polish
 **Duration: 3-4 weeks**
 **Goal: Add professional features and polish**
 
@@ -223,7 +217,7 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 - Analysis tools
 - Export capabilities
 
-## Phase 9: Testing and Documentation
+## Phase 8: Testing and Documentation
 **Duration: 2 weeks**
 **Goal: Ensure reliability and usability**
 
@@ -262,12 +256,14 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 5. **Progressive Enhancement**: Basic features work everywhere
 
 ### Technology Stack:
-- **Bevy 0.14+**: Latest stable version
+- **Bevy 0.16**: Latest stable version (updated from 0.14)
 - **wgpu**: Modern graphics API
 - **egui**: Immediate mode UI
 - **rfd**: Native file dialogs
 - **notify**: File system watching
 - **serde**: Configuration serialization
+- **stl_io**: STL file format support
+- **bevy_brp_extras**: Remote protocol support
 
 ## Risk Mitigation
 
@@ -305,12 +301,27 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 - Documented public APIs
 - Example code for all features
 
+## Current Progress
+
+### Completed:
+- [x] Basic Bevy 0.16 application setup
+- [x] STL file loading support
+- [x] FPS-style camera controls (WASD movement, mouse look)
+- [x] Basic lighting and materials
+- [x] CLI argument parsing
+- [x] Bevy Remote Protocol integration
+
+### In Progress:
+- [ ] File system utilities and discovery
+- [ ] Additional mesh format support (PLY, OBJ)
+- [ ] Mesh processing pipeline
+
 ## Next Steps
 
-1. **Review and refine this plan** with stakeholders
-2. **Set up development environment** and CI/CD
-3. **Create project repository** with initial structure
-4. **Begin Phase 1** implementation
-5. **Establish regular progress reviews**
+1. **Complete Phase 1 foundation** - focus on file discovery and additional format support
+2. **Create abstraction layer** for mesh loading plugins
+3. **Implement PLY and OBJ loaders** as separate plugins
+4. **Design sequence detection system** for Phase 2
+5. **Establish performance benchmarks** early
 
 This reimplementation will result in a modern, maintainable, and performant mesh visualization tool that exceeds the capabilities of the original mesh-ripper while addressing its limitations.

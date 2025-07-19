@@ -21,6 +21,11 @@ fn load_stl_file(
     stl_path: Res<StlFilePath>,
 ) {
     if let Some(path) = &stl_path.0 {
+        // Only load if it's a file, not a directory
+        if !path.is_file() {
+            return;
+        }
+
         info!("Loading STL file: {:?}", path);
 
         // Open and read the STL file

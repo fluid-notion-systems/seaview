@@ -3588,6 +3588,7 @@ dependencies = [
  "bevy",
  "bevy_brp_extras",
  "clap",
+ "regex",
  "stl_io",
 ]
 

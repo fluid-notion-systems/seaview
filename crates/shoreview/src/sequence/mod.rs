@@ -1,0 +1,209 @@
+//! Sequence management for mesh files
+//!
+//! This module provides functionality for discovering, loading, and playing back
+//! sequences of mesh files (e.g., simulation timesteps).
+
+pub mod discovery;
+pub mod loader;
+pub mod playback;
+
+use bevy::prelude::*;
+use std::path::PathBuf;
+
+/// Plugin for mesh sequence management
+pub struct SequencePlugin;
+
+impl Plugin for SequencePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins((
+            discovery::SequenceDiscoveryPlugin,
+            loader::SequenceLoaderPlugin,
+            playback::SequencePlaybackPlugin,
+        ))
+        .init_resource::<SequenceManager>()
+        .add_event::<SequenceEvent>();
+    }
+}
+
+/// Resource that manages the current sequence state
+#[derive(Resource, Default)]
+pub struct SequenceManager {
+    /// Currently loaded sequence, if any
+    pub current_sequence: Option<Sequence>,
+    /// Current frame index in the sequence
+    pub current_frame: usize,
+    /// Whether playback is active
+    pub is_playing: bool,
+    /// Playback speed (frames per second)
+    pub playback_fps: f32,
+}
+
+impl SequenceManager {
+    pub fn new() -> Self {
+        Self {
+            current_sequence: None,
+            current_frame: 0,
+            is_playing: false,
+            playback_fps: 30.0,
+        }
+    }
+
+    /// Load a new sequence
+    pub fn load_sequence(&mut self, sequence: Sequence) {
+        self.current_sequence = Some(sequence);
+        self.current_frame = 0;
+        self.is_playing = false;
+    }
+
+    /// Get the current sequence
+    pub fn current_sequence(&self) -> Option<&Sequence> {
+        self.current_sequence.as_ref()
+    }
+
+    /// Get the current frame path
+    pub fn current_frame_path(&self) -> Option<&PathBuf> {
+        self.current_sequence
+            .as_ref()?
+            .frame_path(self.current_frame)
+    }
+
+    /// Move to the next frame
+    pub fn next_frame(&mut self) -> bool {
+        if let Some(sequence) = &self.current_sequence {
+            if self.current_frame + 1 < sequence.frame_count() {
+                self.current_frame += 1;
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Move to the previous frame
+    pub fn previous_frame(&mut self) -> bool {
+        if self.current_frame > 0 {
+            self.current_frame -= 1;
+            return true;
+        }
+        false
+    }
+
+    /// Jump to a specific frame
+    pub fn jump_to_frame(&mut self, frame: usize) -> bool {
+        if let Some(sequence) = &self.current_sequence {
+            if frame < sequence.frame_count() {
+                self.current_frame = frame;
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Toggle playback
+    pub fn toggle_playback(&mut self) {
+        self.is_playing = !self.is_playing;
+    }
+
+    /// Set playback speed
+    pub fn set_playback_fps(&mut self, fps: f32) {
+        self.playback_fps = fps.max(0.1);
+    }
+}
+
+/// Represents a sequence of mesh files
+#[derive(Debug, Clone)]
+pub struct Sequence {
+    /// Name of the sequence
+    pub name: String,
+    /// Base directory containing the sequence
+    pub base_dir: PathBuf,
+    /// List of frame files in order
+    pub frames: Vec<FrameInfo>,
+    /// Pattern that matches the sequence files
+    pub pattern: String,
+}
+
+impl Sequence {
+    pub fn new(name: String, base_dir: PathBuf, pattern: String) -> Self {
+        Self {
+            name,
+            base_dir,
+            frames: Vec::new(),
+            pattern,
+        }
+    }
+
+    /// Get the number of frames in the sequence
+    pub fn frame_count(&self) -> usize {
+        self.frames.len()
+    }
+
+    /// Get the path for a specific frame
+    pub fn frame_path(&self, index: usize) -> Option<&PathBuf> {
+        self.frames.get(index).map(|f| &f.path)
+    }
+
+    /// Get frame info for a specific frame
+    pub fn frame_info(&self, index: usize) -> Option<&FrameInfo> {
+        self.frames.get(index)
+    }
+
+    /// Add a frame to the sequence
+    pub fn add_frame(&mut self, frame: FrameInfo) {
+        self.frames.push(frame);
+    }
+
+    /// Sort frames by their frame number
+    pub fn sort_frames(&mut self) {
+        self.frames.sort_by_key(|f| f.frame_number);
+    }
+}
+
+/// Information about a single frame in a sequence
+#[derive(Debug, Clone)]
+pub struct FrameInfo {
+    /// Path to the frame file
+    pub path: PathBuf,
+    /// Frame number extracted from filename
+    pub frame_number: usize,
+    /// Original filename
+    pub filename: String,
+    /// File size in bytes
+    pub file_size: u64,
+}
+
+impl FrameInfo {
+    pub fn new(path: PathBuf, frame_number: usize) -> Self {
+        let filename = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        let file_size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+
+        Self {
+            path,
+            frame_number,
+            filename,
+            file_size,
+        }
+    }
+}
+
+/// Events related to sequence operations
+#[derive(Event, Debug)]
+pub enum SequenceEvent {
+    /// A new sequence was loaded
+    SequenceLoaded(String),
+    /// Frame changed
+    FrameChanged(usize),
+    /// Playback started
+    PlaybackStarted,
+    /// Playback stopped
+    PlaybackStopped,
+    /// Sequence discovery started
+    DiscoveryStarted(PathBuf),
+    /// Sequence discovery completed
+    DiscoveryCompleted(usize),
+    /// Error occurred
+    Error(String),
+}

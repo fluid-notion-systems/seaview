@@ -5,9 +5,9 @@ use std::path::PathBuf;
 #[command(name = "shoreview")]
 #[command(about = "A 3D mesh viewer for STL files", long_about = None)]
 pub struct Args {
-    /// Path to the STL file to load
-    #[arg(value_name = "FILE")]
-    pub stl_file: Option<PathBuf>,
+    /// Path to an STL file or directory containing a sequence
+    #[arg(value_name = "PATH")]
+    pub path: Option<PathBuf>,
 
     /// Verbose output
     #[arg(short, long)]

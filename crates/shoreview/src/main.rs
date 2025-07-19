@@ -2,11 +2,15 @@ use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
 
 mod cli;
+mod sequence;
 mod systems;
+mod ui;
 
 use cli::Args;
+use sequence::{discovery::DiscoverSequenceRequest, SequenceManager, SequencePlugin};
 use systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
 use systems::stl_loader::{StlFilePath, StlLoaderPlugin};
+use ui::UiPlugin;
 
 fn main() {
     // Parse command line arguments
@@ -14,17 +18,19 @@ fn main() {
 
     if args.verbose {
         info!("Starting Shoreview mesh viewer...");
-        if let Some(ref path) = args.stl_file {
-            info!("STL file to load: {:?}", path);
+        if let Some(ref path) = args.path {
+            info!("Path provided: {:?}", path);
         }
     }
 
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(StlLoaderPlugin)
+        .add_plugins(SequencePlugin)
+        .add_plugins(UiPlugin)
         .add_plugins(BrpExtrasPlugin)
-        .insert_resource(StlFilePath(args.stl_file))
-        .add_systems(Startup, setup)
+        .insert_resource(StlFilePath(args.path.clone()))
+        .add_systems(Startup, (setup, handle_input_path))
         .add_systems(Update, (camera_controller, cursor_grab_system))
         .run();
 }
@@ -92,4 +98,23 @@ fn setup(
         })),
         Transform::from_xyz(0.0, -1.0, 0.0),
     ));
+}
+
+/// System that handles the input path and decides whether to load a single file or discover a sequence
+fn handle_input_path(mut commands: Commands, stl_path: Res<StlFilePath>) {
+    if let Some(path) = &stl_path.0 {
+        if path.is_dir() {
+            // It's a directory - trigger sequence discovery
+            info!("Discovering sequences in directory: {:?}", path);
+            commands.spawn(DiscoverSequenceRequest {
+                directory: path.clone(),
+                recursive: true,
+            });
+        } else if path.is_file() {
+            // It's a single file - STL loader will handle it
+            info!("Loading single STL file: {:?}", path);
+        } else {
+            error!("Path does not exist: {:?}", path);
+        }
+    }
 }
