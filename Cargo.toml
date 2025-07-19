@@ -1,6 +1,32 @@
-[package]
-name = "shoreview"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = ["crates/shoreview"]
+resolver = "2"
 
-[dependencies]
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Shoreview Contributors"]
+
+[workspace.dependencies]
+bevy = { version = "0.14", default-features = false, features = [
+    "bevy_asset",
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_text",
+    "bevy_ui",
+    "bevy_winit",
+    "multi_threaded",
+    "x11",
+    "bevy_gizmos",
+    "tonemapping_luts",
+    "default_font",
+    "png",
+] }
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
