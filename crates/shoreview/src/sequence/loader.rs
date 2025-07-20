@@ -40,6 +40,8 @@ pub struct LoaderConfig {
     pub async_loading: bool,
     /// Whether to use fallback mesh for failed loads
     pub use_fallback_mesh: bool,
+    /// Whether to automatically fix inverted normals
+    pub fix_inverted_normals: bool,
 }
 
 impl Default for LoaderConfig {
@@ -50,6 +52,7 @@ impl Default for LoaderConfig {
             keep_behind: 5,
             async_loading: true,
             use_fallback_mesh: true,
+            fix_inverted_normals: true,
         }
     }
 }
@@ -231,13 +234,16 @@ impl MeshCache {
         if let Some(handle) = &self.material_handle {
             handle.clone()
         } else {
+            // Log material creation for debugging
+            info!("Creating material with double-sided rendering enabled");
             let handle = materials.add(StandardMaterial {
-                base_color: Color::srgb(0.8, 0.8, 0.8),
-                metallic: 0.1,
-                perceptual_roughness: 0.8,
-                reflectance: 0.5,
-                double_sided: false,
-                cull_mode: Some(bevy::render::render_resource::Face::Back),
+                base_color: Color::srgb(0.9, 0.9, 0.9),
+                metallic: 0.0,
+                perceptual_roughness: 0.5,
+                reflectance: 0.3,
+                double_sided: true, // Enable double-sided rendering to debug normal issues
+                cull_mode: None,    // Disable culling temporarily to see all faces
+                unlit: false,       // Ensure the material is lit
                 ..default()
             });
             self.material_handle = Some(handle.clone());
@@ -545,6 +551,7 @@ pub fn load_stl_file_optimized(
 
     let mut valid_faces = 0;
     let mut skipped_faces = 0;
+    let mut inverted_normals = 0;
 
     for (face_idx, face) in stl.faces.iter().enumerate() {
         // Validate vertex indices
@@ -597,7 +604,7 @@ pub fn load_stl_file_optimized(
         let edge2 = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
 
         // Cross product for normal
-        let normal = [
+        let mut normal = [
             edge1[1] * edge2[2] - edge1[2] * edge2[1],
             edge1[2] * edge2[0] - edge1[0] * edge2[2],
             edge1[0] * edge2[1] - edge1[1] * edge2[0],
@@ -618,7 +625,37 @@ pub fn load_stl_file_optimized(
 
         // Normalize
         let len = len_squared.sqrt();
-        let normal = [normal[0] / len, normal[1] / len, normal[2] / len];
+        normal = [normal[0] / len, normal[1] / len, normal[2] / len];
+
+        // Check if the face normal from the STL file agrees with our calculated normal
+        // STL face normal is not optional in stl_io crate
+        let stl_normal = face.normal;
+        let dot_product =
+            normal[0] * stl_normal[0] + normal[1] * stl_normal[1] + normal[2] * stl_normal[2];
+
+        // If the dot product is negative, the normals point in opposite directions
+        if dot_product < -0.5 {
+            // The winding order is likely inverted
+            inverted_normals += 1;
+            // Flip the normal
+            normal = [-normal[0], -normal[1], -normal[2]];
+
+            // Also swap vertex order to fix winding
+            positions.push(p0);
+            positions.push(p2); // Swapped
+            positions.push(p1); // Swapped
+
+            normals.push(normal);
+            normals.push(normal);
+            normals.push(normal);
+
+            uvs.push([0.0, 0.0]);
+            uvs.push([0.5, 1.0]); // Swapped
+            uvs.push([1.0, 0.0]); // Swapped
+
+            valid_faces += 1;
+            continue;
+        }
 
         // Add vertices with calculated normal
         positions.push(p0);
@@ -636,6 +673,24 @@ pub fn load_stl_file_optimized(
 
         valid_faces += 1;
     }
+
+    // Log if we detected and fixed inverted normals
+    if inverted_normals > 0 {
+        let invert_percentage = (inverted_normals as f32 / valid_faces as f32) * 100.0;
+        warn!(
+            "Fixed {} inverted normals ({:.1}% of valid faces) in {:?}",
+            inverted_normals, invert_percentage, path
+        );
+    }
+
+    // Always log face statistics for debugging
+    info!(
+        "Loaded mesh from {:?}: {} valid faces, {} skipped, {} inverted normals fixed",
+        path.file_name().unwrap_or_default(),
+        valid_faces,
+        skipped_faces,
+        inverted_normals
+    );
 
     // Check if we have any valid faces
     if valid_faces == 0 {
