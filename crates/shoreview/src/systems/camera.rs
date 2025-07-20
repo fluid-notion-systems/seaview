@@ -1,3 +1,14 @@
+//! FPS-style camera controller with mouse look and keyboard movement
+//!
+//! Controls:
+//! - WASD: Move forward/back/left/right
+//! - Q/E: Move down/up
+//! - Mouse: Look around (when cursor is grabbed)
+//! - Left Click: Grab cursor for mouse look
+//! - Escape: Release cursor
+//! - Shift: 10x movement speed boost
+//! - Alt: 0.1x movement speed (precision mode)
+
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
@@ -71,7 +82,21 @@ pub fn camera_controller(
 
     // Handle movement
     let mut movement = Vec3::ZERO;
-    let speed = fps_camera.speed;
+    let base_speed = fps_camera.speed;
+
+    // Apply speed modifiers
+    // Shift: 10x speed for fast movement
+    // Alt: 0.1x speed for precision movement
+    let speed_modifier = if input.pressed(KeyCode::ShiftLeft) || input.pressed(KeyCode::ShiftRight)
+    {
+        10.0 // Shift for 10x speed
+    } else if input.pressed(KeyCode::AltLeft) || input.pressed(KeyCode::AltRight) {
+        0.1 // Alt for slow movement (all directions)
+    } else {
+        1.0
+    };
+
+    let speed = base_speed * speed_modifier;
 
     if input.pressed(KeyCode::KeyW) {
         movement += *transform.forward();
@@ -86,30 +111,18 @@ pub fn camera_controller(
         movement += *transform.right();
     }
 
-    // Handle vertical movement separately to preserve modifier effect
-    let mut vertical_movement = 0.0;
-    let vertical_modifier = if input.pressed(KeyCode::AltLeft) {
-        0.1
-    } else {
-        1.0
-    };
-
+    // Handle vertical movement
     if input.pressed(KeyCode::KeyE) {
-        vertical_movement += vertical_modifier;
+        movement += Vec3::Y;
     }
     if input.pressed(KeyCode::KeyQ) {
-        vertical_movement -= vertical_modifier;
+        movement -= Vec3::Y;
     }
 
-    // Apply horizontal movement
+    // Apply movement
     if movement != Vec3::ZERO {
         movement = movement.normalize();
         transform.translation += movement * speed * time.delta_secs();
-    }
-
-    // Apply vertical movement separately
-    if vertical_movement != 0.0 {
-        transform.translation.y += vertical_movement * speed * time.delta_secs();
     }
 }
 
