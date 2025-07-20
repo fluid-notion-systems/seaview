@@ -408,11 +408,17 @@ fn handle_frame_changes(
             let material_handle = mesh_cache.get_material(&mut materials);
 
             // Spawn new mesh entity
+            let transform = if let Some(sequence) = &sequence_manager.current_sequence {
+                sequence.source_orientation.to_transform()
+            } else {
+                Transform::IDENTITY
+            };
+
             let entity = commands
                 .spawn((
                     Mesh3d(mesh_handle.clone()),
                     MeshMaterial3d(material_handle),
-                    Transform::from_xyz(0.0, 0.0, 0.0),
+                    transform,
                     Name::new(format!("Frame {}", sequence_manager.current_frame)),
                 ))
                 .id();

@@ -19,6 +19,7 @@ fn load_initial_stl_file(
     mut materials: ResMut<Assets<StandardMaterial>>,
     stl_path: Res<StlFilePath>,
     mut mesh_cache: ResMut<MeshCache>,
+    source_orientation: Res<crate::coordinates::SourceOrientation>,
 ) {
     if let Some(path) = &stl_path.0 {
         // Only load if it's a file, not a directory
@@ -55,7 +56,7 @@ fn load_initial_stl_file(
                     .spawn((
                         Mesh3d(mesh_handle),
                         MeshMaterial3d(material),
-                        Transform::from_xyz(0.0, 0.0, 0.0),
+                        source_orientation.as_ref().to_transform(),
                         Name::new("Initial STL Model"),
                     ))
                     .id();

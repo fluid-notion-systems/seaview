@@ -21,6 +21,7 @@ impl Plugin for SequenceDiscoveryPlugin {
 pub struct DiscoverSequenceRequest {
     pub directory: PathBuf,
     pub recursive: bool,
+    pub source_orientation: crate::coordinates::SourceOrientation,
 }
 
 /// Resource for managing sequence discovery patterns
@@ -79,7 +80,12 @@ fn handle_discovery_requests(
         info!("Discovering sequences in: {:?}", request.directory);
         events.write(SequenceEvent::DiscoveryStarted(request.directory.clone()));
 
-        match discover_sequences(&request.directory, request.recursive, patterns) {
+        match discover_sequences(
+            &request.directory,
+            request.recursive,
+            &patterns,
+            request.source_orientation,
+        ) {
             Ok(sequences) => {
                 info!("Found {} sequences", sequences.len());
 
@@ -110,6 +116,7 @@ pub fn discover_sequences(
     directory: &Path,
     recursive: bool,
     patterns: &SequencePatterns,
+    source_orientation: crate::coordinates::SourceOrientation,
 ) -> Result<Vec<Sequence>, std::io::Error> {
     let mut sequences = Vec::new();
     let mut file_groups: HashMap<(String, String), Vec<(PathBuf, usize)>> = HashMap::new();
@@ -131,6 +138,7 @@ pub fn discover_sequences(
             base_name.clone(),
             directory.to_path_buf(),
             pattern_name.clone(),
+            source_orientation,
         );
 
         for (path, frame_number) in files {

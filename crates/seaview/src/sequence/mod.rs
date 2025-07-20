@@ -138,16 +138,24 @@ pub struct Sequence {
     pub base_dir: PathBuf,
     /// List of frame files in order
     pub frames: Vec<FrameInfo>,
+    /// Source coordinate system orientation
+    pub source_orientation: crate::coordinates::SourceOrientation,
     /// Pattern that matches the sequence files
     pub pattern: String,
 }
 
 impl Sequence {
-    pub fn new(name: String, base_dir: PathBuf, pattern: String) -> Self {
+    pub fn new(
+        name: String,
+        base_dir: PathBuf,
+        pattern: String,
+        source_orientation: crate::coordinates::SourceOrientation,
+    ) -> Self {
         Self {
             name,
             base_dir,
             frames: Vec::new(),
+            source_orientation,
             pattern,
         }
     }

@@ -2,11 +2,13 @@ use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
 
 mod cli;
+mod coordinates;
 mod sequence;
 mod systems;
 mod ui;
 
 use cli::Args;
+use coordinates::SourceOrientation;
 use sequence::{discovery::DiscoverSequenceRequest, SequencePlugin};
 use systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
 use systems::stl_loader::{StlFilePath, StlLoaderPlugin};
@@ -23,6 +25,20 @@ fn main() {
         }
     }
 
+    // Parse source coordinate system
+    let source_orientation = match SourceOrientation::from_str(&args.source_coordinates) {
+        Ok(orientation) => {
+            if args.verbose {
+                info!("Using coordinate system: {}", orientation.description());
+            }
+            orientation
+        }
+        Err(e) => {
+            error!("{}", e);
+            std::process::exit(1);
+        }
+    };
+
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(StlLoaderPlugin)
@@ -30,6 +46,7 @@ fn main() {
         .add_plugins(UIPlugin)
         .add_plugins(BrpExtrasPlugin)
         .insert_resource(StlFilePath(args.path.clone()))
+        .insert_resource(source_orientation)
         .add_systems(Startup, (setup, handle_input_path))
         .add_systems(Update, (camera_controller, cursor_grab_system))
         .run();
@@ -88,7 +105,11 @@ fn setup(
 }
 
 /// System that handles the input path and decides whether to load a single file or discover a sequence
-fn handle_input_path(mut commands: Commands, stl_path: Res<StlFilePath>) {
+fn handle_input_path(
+    mut commands: Commands,
+    stl_path: Res<StlFilePath>,
+    source_orientation: Res<SourceOrientation>,
+) {
     if let Some(path) = &stl_path.0 {
         if path.is_dir() {
             // It's a directory - trigger sequence discovery
@@ -96,6 +117,7 @@ fn handle_input_path(mut commands: Commands, stl_path: Res<StlFilePath>) {
             commands.spawn(DiscoverSequenceRequest {
                 directory: path.clone(),
                 recursive: true,
+                source_orientation: *source_orientation,
             });
         } else if path.is_file() {
             // It's a single file - STL loader will handle it
