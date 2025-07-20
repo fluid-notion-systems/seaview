@@ -171,7 +171,7 @@ fn create_icosahedron(cx: f32, cy: f32, cz: f32, radius: f32) -> Vec<Triangle> {
     let b = a * phi;
 
     // Vertices of an icosahedron
-    let vertices = vec![
+    let vertices = [
         Vector::new([cx - a, cy - b, cz]),
         Vector::new([cx + a, cy - b, cz]),
         Vector::new([cx - a, cy + b, cz]),

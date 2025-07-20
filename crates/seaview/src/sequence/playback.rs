@@ -146,11 +146,8 @@ fn handle_playback_input(
                             events
                                 .write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
                         }
-                    } else {
-                        if sequence_manager.previous_frame() {
-                            events
-                                .write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
-                        }
+                    } else if sequence_manager.previous_frame() {
+                        events.write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
                     }
                 }
             }

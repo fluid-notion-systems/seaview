@@ -342,6 +342,7 @@ fn preload_sequence_meshes(
 }
 
 /// System that handles frame changes and loads new meshes
+#[allow(clippy::too_many_arguments)]
 fn handle_frame_changes(
     mut commands: Commands,
     mut sequence_manager: ResMut<SequenceManager>,

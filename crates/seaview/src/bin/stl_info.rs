@@ -150,9 +150,9 @@ fn analyze_binary_stl(path: &Path) -> Result<StlInfo, Box<dyn std::error::Error>
                 reader.read_f32::<LittleEndian>()?,
             ];
 
-            for i in 0..3 {
-                bounds.min[i] = bounds.min[i].min(vertex[i]);
-                bounds.max[i] = bounds.max[i].max(vertex[i]);
+            for (i, &v) in vertex.iter().enumerate() {
+                bounds.min[i] = bounds.min[i].min(v);
+                bounds.max[i] = bounds.max[i].max(v);
             }
         }
 
@@ -246,8 +246,8 @@ fn convert_to_ascii(path: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> 
 
         // Read vertices
         let mut vertices = [[0.0f32; 3]; 3];
-        for j in 0..3 {
-            vertices[j] = [
+        for vertex in &mut vertices {
+            *vertex = [
                 reader.read_f32::<LittleEndian>()?,
                 reader.read_f32::<LittleEndian>()?,
                 reader.read_f32::<LittleEndian>()?,

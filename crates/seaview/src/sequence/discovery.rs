@@ -175,7 +175,7 @@ fn scan_directory(
                                 let key = (pattern.name.clone(), base_name);
                                 file_groups
                                     .entry(key)
-                                    .or_insert_with(Vec::new)
+                                    .or_default()
                                     .push((path.clone(), frame_number));
                                 break; // Don't try other patterns for this file
                             }
