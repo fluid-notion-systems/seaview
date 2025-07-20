@@ -36,7 +36,7 @@ fn load_initial_stl_file(
 
         // Load the STL file using optimized loader
         match load_stl_file_optimized(path) {
-            Ok(mesh) => {
+            Ok((mesh, _stats)) => {
                 let mesh_handle = meshes.add(mesh);
 
                 // Create a material for the mesh

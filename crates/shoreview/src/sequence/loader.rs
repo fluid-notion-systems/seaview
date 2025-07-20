@@ -38,6 +38,8 @@ pub struct LoaderConfig {
     pub keep_behind: usize,
     /// Whether to enable async loading
     pub async_loading: bool,
+    /// Whether to use fallback mesh for failed loads
+    pub use_fallback_mesh: bool,
 }
 
 impl Default for LoaderConfig {
@@ -47,6 +49,7 @@ impl Default for LoaderConfig {
             prefetch_ahead: 10,
             keep_behind: 5,
             async_loading: true,
+            use_fallback_mesh: true,
         }
     }
 }
@@ -129,15 +132,34 @@ pub struct MeshCache {
     material_handle: Option<Handle<StandardMaterial>>,
     /// Track the last displayed frame to avoid redundant updates
     last_displayed_frame: Option<usize>,
+    /// Statistics for tracking loading issues
+    stats: LoadingStats,
+}
+
+/// Statistics for tracking mesh loading
+#[derive(Default, Debug)]
+pub struct LoadingStats {
+    /// Total files attempted to load
+    pub total_attempts: usize,
+    /// Successfully loaded files
+    pub successful_loads: usize,
+    /// Files that failed to load
+    pub failed_loads: usize,
+    /// Files that used fallback mesh
+    pub fallback_used: usize,
+    /// Total faces processed
+    pub total_faces_processed: usize,
+    /// Total faces skipped due to errors
+    pub total_faces_skipped: usize,
 }
 
 impl MeshCache {
-    /// Get or start loading a mesh
     /// Get or load a mesh from cache
     pub fn get_or_load(
         &mut self,
         path: &PathBuf,
         meshes: &mut Assets<Mesh>,
+        use_fallback: bool,
     ) -> Option<Handle<Mesh>> {
         // Update access order
         if let Some(pos) = self.access_order.iter().position(|p| p == path) {
@@ -145,21 +167,50 @@ impl MeshCache {
         }
         self.access_order.push(path.clone());
 
-        // Check if already in cache
+        // Check if already cached
         if let Some(handle) = self.cache.get(path) {
             return Some(handle.clone());
         }
 
-        // Load STL file directly from disk
+        // Track loading attempt
+        self.stats.total_attempts += 1;
+
+        // Load the mesh
         match load_stl_file_optimized(path) {
-            Ok(mesh) => {
+            Ok((mesh, stats)) => {
                 let handle = meshes.add(mesh);
                 self.cache.insert(path.clone(), handle.clone());
+                self.stats.successful_loads += 1;
+                self.stats.total_faces_processed += stats.faces_processed;
+                self.stats.total_faces_skipped += stats.faces_skipped;
+
+                if stats.faces_skipped > 0 {
+                    let skip_percentage = (stats.faces_skipped as f32
+                        / (stats.faces_processed + stats.faces_skipped) as f32)
+                        * 100.0;
+                    info!(
+                        "Loaded {:?} with {:.1}% faces skipped",
+                        path.file_name().unwrap_or_default(),
+                        skip_percentage
+                    );
+                }
+
                 Some(handle)
             }
             Err(e) => {
-                error!("Failed to load STL file {:?}: {}", path, e);
-                None
+                self.stats.failed_loads += 1;
+                warn!("Failed to load STL file {:?}: {}", path, e);
+
+                if use_fallback {
+                    warn!("Using fallback mesh for {:?}", path);
+                    let fallback_mesh = create_fallback_mesh();
+                    let handle = meshes.add(fallback_mesh);
+                    self.cache.insert(path.clone(), handle.clone());
+                    self.stats.fallback_used += 1;
+                    Some(handle)
+                } else {
+                    None
+                }
             }
         }
     }
@@ -205,18 +256,9 @@ impl MeshCache {
     }
 
     /// Get cache statistics
-    pub fn stats(&self) -> CacheStats {
-        CacheStats {
-            total_meshes: self.cache.len(),
-            meshes_loaded: self.cache.len(),
-        }
+    pub fn stats(&self) -> &LoadingStats {
+        &self.stats
     }
-}
-
-/// Cache statistics
-pub struct CacheStats {
-    pub total_meshes: usize,
-    pub meshes_loaded: usize,
 }
 
 /// System to preload all sequence meshes at startup
@@ -254,7 +296,7 @@ fn preload_sequence_meshes(
         .collect();
 
     for path in paths_to_load {
-        if let Some(handle) = mesh_cache.get_or_load(&path, &mut meshes) {
+        if let Some(handle) = mesh_cache.get_or_load(&path, &mut meshes, config.use_fallback_mesh) {
             loading_state.loading_handles.insert(path, handle);
         }
     }
@@ -343,7 +385,7 @@ fn handle_frame_changes(
         );
 
         // Always try to get or load the mesh for the current frame
-        if let Some(mesh_handle) = mesh_cache.get_or_load(path, &mut meshes) {
+        if let Some(mesh_handle) = mesh_cache.get_or_load(path, &mut meshes, false) {
             // Remove old mesh entity
             if let Some(entity) = mesh_cache.current_mesh_entity {
                 info!("Despawning old mesh entity: {:?}", entity);
@@ -383,8 +425,8 @@ fn handle_frame_changes(
 /// System to update cache statistics
 fn update_cache_stats(
     mesh_cache: Res<MeshCache>,
-    loading_state: Res<LoadingState>,
-    config: Res<LoaderConfig>,
+    _loading_state: Res<LoadingState>,
+    _config: Res<LoaderConfig>,
 ) {
     static mut LAST_LOG: f64 = 0.0;
     let now = std::time::SystemTime::now()
@@ -396,10 +438,29 @@ fn update_cache_stats(
         if now - LAST_LOG > 5.0 {
             LAST_LOG = now;
             let stats = mesh_cache.stats();
-            debug!(
-                "Cache stats: {}/{} meshes cached, {} frames loaded",
-                stats.meshes_loaded, config.cache_size, loading_state.frames_loaded
-            );
+            if stats.total_attempts > 0 {
+                let success_rate =
+                    (stats.successful_loads as f32 / stats.total_attempts as f32) * 100.0;
+                info!(
+                    "Cache stats: {} meshes cached, {:.1}% success rate ({}/{} loaded, {} fallbacks)",
+                    mesh_cache.cache.len(),
+                    success_rate,
+                    stats.successful_loads,
+                    stats.total_attempts,
+                    stats.fallback_used
+                );
+
+                if stats.total_faces_skipped > 0 {
+                    debug!(
+                        "Face processing: {} processed, {} skipped ({:.1}% skip rate)",
+                        stats.total_faces_processed,
+                        stats.total_faces_skipped,
+                        (stats.total_faces_skipped as f32
+                            / (stats.total_faces_processed + stats.total_faces_skipped) as f32)
+                            * 100.0
+                    );
+                }
+            }
         }
     }
 }
@@ -419,30 +480,119 @@ pub struct LoadingProgress {
     pub path: PathBuf,
 }
 
+/// Statistics from loading a single STL file
+pub struct FileLoadStats {
+    pub faces_processed: usize,
+    pub faces_skipped: usize,
+}
+
 /// Load an STL file from disk and convert it to a Bevy mesh
-pub fn load_stl_file_optimized(path: &Path) -> Result<Mesh, Box<dyn std::error::Error>> {
-    let file = File::open(path)?;
+/// Handles various malformed STL files gracefully
+/// Returns the mesh and statistics about the loading process
+pub fn load_stl_file_optimized(
+    path: &Path,
+) -> Result<(Mesh, FileLoadStats), Box<dyn std::error::Error>> {
+    // Try to open the file
+    let file = match File::open(path) {
+        Ok(f) => f,
+        Err(e) => {
+            return Err(format!("Failed to open STL file {:?}: {}", path, e).into());
+        }
+    };
     let mut reader = BufReader::new(file);
 
     // Read STL file
-    let stl = stl_io::read_stl(&mut reader)?;
+    let stl = match stl_io::read_stl(&mut reader) {
+        Ok(stl) => stl,
+        Err(e) => {
+            // Try to provide more helpful error messages
+            let error_msg = format!("Failed to parse STL file: {}", e);
+            return Err(error_msg.into());
+        }
+    };
+
+    // Validate STL data
+    if stl.faces.is_empty() {
+        return Err("STL file contains no faces".into());
+    }
+
+    if stl.vertices.is_empty() {
+        return Err("STL file contains no vertices".into());
+    }
+
+    // Check for reasonable bounds
+    let vertex_count = stl.vertices.len();
+    let face_count = stl.faces.len();
+
+    if vertex_count > 10_000_000 {
+        warn!(
+            "STL file {:?} has {} vertices, which is unusually large",
+            path, vertex_count
+        );
+    }
+
+    if face_count > 10_000_000 {
+        warn!(
+            "STL file {:?} has {} faces, which is unusually large",
+            path, face_count
+        );
+    }
 
     // Convert STL triangles to Bevy mesh
-    let mut positions = Vec::new();
-    let mut normals = Vec::new();
-    let mut uvs = Vec::new();
+    let mut positions = Vec::with_capacity(stl.faces.len() * 3);
+    let mut normals = Vec::with_capacity(stl.faces.len() * 3);
+    let mut uvs = Vec::with_capacity(stl.faces.len() * 3);
 
-    for face in &stl.faces {
+    let mut valid_faces = 0;
+    let mut skipped_faces = 0;
+
+    for (face_idx, face) in stl.faces.iter().enumerate() {
+        // Validate vertex indices
+        let mut valid_face = true;
+        for &vertex_idx in &face.vertices {
+            if vertex_idx >= stl.vertices.len() {
+                warn!(
+                    "Face {} in {:?} has invalid vertex index {} (max: {})",
+                    face_idx,
+                    path,
+                    vertex_idx,
+                    stl.vertices.len() - 1
+                );
+                valid_face = false;
+                break;
+            }
+        }
+
+        if !valid_face {
+            skipped_faces += 1;
+            continue;
+        }
+
         // Get the three vertices of the triangle
         let v0 = &stl.vertices[face.vertices[0]];
         let v1 = &stl.vertices[face.vertices[1]];
         let v2 = &stl.vertices[face.vertices[2]];
 
-        // Calculate normal for the face
+        // Convert to arrays and validate for NaN/Inf
         let p0 = [v0[0], v0[1], v0[2]];
         let p1 = [v1[0], v1[1], v1[2]];
         let p2 = [v2[0], v2[1], v2[2]];
 
+        // Check for invalid coordinates
+        let coords_valid = [&p0, &p1, &p2]
+            .iter()
+            .all(|p| p.iter().all(|&coord| coord.is_finite()));
+
+        if !coords_valid {
+            warn!(
+                "Face {} in {:?} contains non-finite coordinates (NaN or Inf)",
+                face_idx, path
+            );
+            skipped_faces += 1;
+            continue;
+        }
+
+        // Check for degenerate triangles (zero area)
         let edge1 = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
         let edge2 = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
 
@@ -453,13 +603,22 @@ pub fn load_stl_file_optimized(path: &Path) -> Result<Mesh, Box<dyn std::error::
             edge1[0] * edge2[1] - edge1[1] * edge2[0],
         ];
 
+        // Calculate length for normalization and degeneracy check
+        let len_squared = normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2];
+
+        // Skip degenerate triangles (collinear points)
+        if len_squared < 1e-10 {
+            debug!(
+                "Face {} in {:?} is degenerate (collinear vertices)",
+                face_idx, path
+            );
+            skipped_faces += 1;
+            continue;
+        }
+
         // Normalize
-        let len = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
-        let normal = if len > 0.0 {
-            [normal[0] / len, normal[1] / len, normal[2] / len]
-        } else {
-            [0.0, 1.0, 0.0] // Default up normal
-        };
+        let len = len_squared.sqrt();
+        let normal = [normal[0] / len, normal[1] / len, normal[2] / len];
 
         // Add vertices with calculated normal
         positions.push(p0);
@@ -474,6 +633,35 @@ pub fn load_stl_file_optimized(path: &Path) -> Result<Mesh, Box<dyn std::error::
         uvs.push([0.0, 0.0]);
         uvs.push([1.0, 0.0]);
         uvs.push([0.5, 1.0]);
+
+        valid_faces += 1;
+    }
+
+    // Check if we have any valid faces
+    if valid_faces == 0 {
+        return Err(format!(
+            "No valid faces found in STL file (skipped {} invalid faces)",
+            skipped_faces
+        )
+        .into());
+    }
+
+    // Log statistics if we skipped any faces
+    if skipped_faces > 0 {
+        let skip_percentage = (skipped_faces as f32 / stl.faces.len() as f32) * 100.0;
+        if skip_percentage > 50.0 {
+            error!(
+                "STL file {:?} is severely corrupted: {:.1}% of faces are invalid ({} valid, {} skipped)",
+                path, skip_percentage, valid_faces, skipped_faces
+            );
+        } else {
+            warn!(
+                "Loaded {:?}: {} valid faces, {} skipped ({:.1}% invalid)",
+                path, valid_faces, skipped_faces, skip_percentage
+            );
+        }
+    } else {
+        debug!("Successfully loaded {:?}: {} faces", path, valid_faces);
     }
 
     // Create mesh
@@ -485,5 +673,55 @@ pub fn load_stl_file_optimized(path: &Path) -> Result<Mesh, Box<dyn std::error::
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
 
-    Ok(mesh)
+    let stats = FileLoadStats {
+        faces_processed: valid_faces,
+        faces_skipped: skipped_faces,
+    };
+
+    Ok((mesh, stats))
+}
+
+/// Create a fallback mesh when STL loading fails
+pub fn create_fallback_mesh() -> Mesh {
+    // Create a simple cube as fallback
+    let size = 1.0;
+    let vertices = vec![
+        // Front face
+        ([-size, -size, size], [0.0, 0.0, 1.0], [0.0, 0.0]),
+        ([size, -size, size], [0.0, 0.0, 1.0], [1.0, 0.0]),
+        ([size, size, size], [0.0, 0.0, 1.0], [1.0, 1.0]),
+        ([-size, size, size], [0.0, 0.0, 1.0], [0.0, 1.0]),
+        // Back face
+        ([size, -size, -size], [0.0, 0.0, -1.0], [0.0, 0.0]),
+        ([-size, -size, -size], [0.0, 0.0, -1.0], [1.0, 0.0]),
+        ([-size, size, -size], [0.0, 0.0, -1.0], [1.0, 1.0]),
+        ([size, size, -size], [0.0, 0.0, -1.0], [0.0, 1.0]),
+    ];
+
+    let indices = vec![
+        0, 1, 2, 2, 3, 0, // front
+        4, 5, 6, 6, 7, 4, // back
+    ];
+
+    let mut positions = Vec::new();
+    let mut normals = Vec::new();
+    let mut uvs = Vec::new();
+
+    for (position, normal, uv) in &vertices {
+        positions.push(*position);
+        normals.push(*normal);
+        uvs.push(*uv);
+    }
+
+    let mut mesh = Mesh::new(
+        bevy::render::mesh::PrimitiveTopology::TriangleList,
+        bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD,
+    );
+
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_indices(bevy::render::mesh::Indices::U32(indices));
+
+    mesh
 }
