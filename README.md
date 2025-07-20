@@ -1,4 +1,4 @@
-# Shoreview
+# Seaview
 
 A modern reimplementation of mesh-ripper - a high-performance mesh sequence viewer for fluid simulations and time-series 3D data.
 
@@ -39,10 +39,10 @@ cargo run --release
 ## Project Structure
 
 ```
-shoreview/
+seaview/
 ├── Cargo.toml           # Workspace configuration
 ├── crates/
-│   └── shoreview/       # Main application crate
+│   └── seaview/       # Main application crate
 │       ├── Cargo.toml
 │       └── src/
 │           └── main.rs  # Application entry point

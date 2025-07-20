@@ -1,4 +1,4 @@
-//! UI module for the Shoreview application
+//! UI module for the Seaview application
 
 use crate::sequence::{LoadingState, SequenceEvent, SequenceManager};
 use bevy::prelude::*;

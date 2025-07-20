@@ -2,7 +2,7 @@ use clap::Parser;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
-#[command(name = "shoreview")]
+#[command(name = "seaview")]
 #[command(about = "A 3D mesh viewer for STL files", long_about = None)]
 pub struct Args {
     /// Path to an STL file or directory containing a sequence

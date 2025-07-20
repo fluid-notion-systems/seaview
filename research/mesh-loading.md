@@ -7,8 +7,8 @@ This document explores mesh file loading options in Bevy 0.14+, focusing on supp
 ## Native Bevy Support
 
 ### GLTF/GLB (Built-in)
-**Status**: First-class support in Bevy  
-**Module**: `bevy::gltf`  
+**Status**: First-class support in Bevy
+**Module**: `bevy::gltf`
 
 GLTF is Bevy's primary 3D asset format with the most comprehensive support:
 - Complete scene graph support
@@ -32,14 +32,14 @@ pub trait AssetLoader: Send + Sync + 'static {
     type Asset: Asset;
     type Settings: Settings + Default + Serialize + for<'a> Deserialize<'a>;
     type Error: Into<Box<dyn Error + Send + Sync>>;
-    
+
     fn load(
         &self,
         reader: &mut dyn Reader,
         settings: &Self::Settings,
         load_context: &mut LoadContext<'_>,
     ) -> impl ConditionalSendFuture<Output = Result<Self::Asset, Self::Error>>;
-    
+
     fn extensions(&self) -> &[&str];
 }
 ```
@@ -47,9 +47,9 @@ pub trait AssetLoader: Send + Sync + 'static {
 ## Third-Party Format Support
 
 ### 1. STL Support
-**Crate**: `bevy_stl`  
-**Repository**: https://github.com/nilclass/bevy_stl  
-**Status**: Active but may need updates for Bevy 0.14  
+**Crate**: `bevy_stl`
+**Repository**: https://github.com/nilclass/bevy_stl
+**Status**: Active but may need updates for Bevy 0.14
 
 ```toml
 [dependencies]
@@ -74,9 +74,9 @@ let mesh_handle: Handle<Mesh> = asset_server.load("model.stl");
 - May need forking for latest Bevy
 
 ### 2. PLY Support
-**Crate**: `bevy_ply`  
-**Repository**: https://github.com/rezural/bevy_ply  
-**Status**: May need updates  
+**Crate**: `bevy_ply`
+**Repository**: https://github.com/rezural/bevy_ply
+**Status**: May need updates
 
 **Pros**:
 - Support for vertex colors
@@ -165,17 +165,17 @@ impl AssetLoader for StlLoader {
     ) -> Result<Self::Asset, Self::Error> {
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
-        
+
         let stl = stl_io::read_stl(&mut bytes.as_slice())?;
-        
+
         // Convert STL to Bevy mesh
         let mut positions = Vec::new();
         let mut normals = Vec::new();
         let mut indices = Vec::new();
-        
+
         for (i, triangle) in stl.triangles.iter().enumerate() {
             let base_index = (i * 3) as u32;
-            
+
             // Add vertices
             for j in 0..3 {
                 positions.push([
@@ -189,7 +189,7 @@ impl AssetLoader for StlLoader {
                     triangle.normal[2],
                 ]);
             }
-            
+
             // Add indices
             indices.extend_from_slice(&[
                 base_index,
@@ -197,15 +197,15 @@ impl AssetLoader for StlLoader {
                 base_index + 2,
             ]);
         }
-        
+
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
         mesh.set_indices(Some(Indices::U32(indices)));
-        
+
         Ok(mesh)
     }
-    
+
     fn extensions(&self) -> &[&str] {
         &["stl"]
     }
@@ -227,24 +227,24 @@ pub struct MeshFormatRegistry {
 impl MeshFormatRegistry {
     pub fn new() -> Self {
         let mut formats = HashMap::new();
-        
+
         // Register formats
         let stl = Box::new(StlFormat);
         for ext in stl.extensions() {
             formats.insert(ext.to_string(), stl.clone());
         }
-        
+
         Self { formats }
     }
-    
+
     pub fn load_from_path(&self, path: &Path) -> Result<MeshData, MeshLoadError> {
         let extension = path.extension()
             .and_then(|e| e.to_str())
             .ok_or(MeshLoadError::UnknownFormat)?;
-            
+
         let format = self.formats.get(extension)
             .ok_or(MeshLoadError::UnsupportedFormat(extension.to_string()))?;
-            
+
         let data = std::fs::read(path)?;
         format.load_mesh(&data)
     }
@@ -259,16 +259,16 @@ impl MeshFormatRegistry {
 pub enum MeshLoadError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("Unknown file format")]
     UnknownFormat,
-    
+
     #[error("Unsupported format: {0}")]
     UnsupportedFormat(String),
-    
+
     #[error("Invalid mesh data: {0}")]
     InvalidData(String),
-    
+
     #[error("STL parsing error: {0}")]
     StlError(#[from] stl_io::StlError),
 }
@@ -279,7 +279,7 @@ Many formats (like STL) store face normals but not vertex normals. Implement smo
 
 ```rust
 pub fn calculate_smooth_normals(
-    positions: &[[f32; 3]], 
+    positions: &[[f32; 3]],
     indices: &[u32]
 ) -> Vec<[f32; 3]> {
     // Implementation for smooth vertex normals
@@ -292,14 +292,14 @@ pub fn validate_mesh(mesh_data: &MeshData) -> Result<(), MeshLoadError> {
     if mesh_data.positions.is_empty() {
         return Err(MeshLoadError::InvalidData("No vertices".into()));
     }
-    
+
     if let Some(indices) = &mesh_data.indices {
         let max_index = *indices.iter().max().unwrap_or(&0) as usize;
         if max_index >= mesh_data.positions.len() {
             return Err(MeshLoadError::InvalidData("Invalid indices".into()));
         }
     }
-    
+
     Ok(())
 }
 ```
@@ -334,7 +334,7 @@ pub async fn load_mesh_async(
 - **PLY**: Binary format available
 - **OBJ**: Pre-process to binary format for production
 
-## Recommendations for Shoreview
+## Recommendations for Seaview
 
 ### Immediate Implementation (Phase 1):
 1. Start with direct `stl_io` integration for STL support
@@ -356,7 +356,7 @@ pub async fn load_mesh_async(
 
 ```rust
 // In your main.rs or plugin
-use shoreview_mesh_loader::{MeshLoaderPlugin, StlFormat, PlyFormat};
+use seaview_mesh_loader::{MeshLoaderPlugin, StlFormat};
 
 app.add_plugins(MeshLoaderPlugin::default()
     .with_format(StlFormat)
@@ -368,7 +368,7 @@ let mesh_handle: Handle<Mesh> = asset_server.load("model.stl");
 
 ## Conclusion
 
-For Shoreview's immediate needs:
+For seaview's immediate needs:
 1. **STL support** via direct `stl_io` integration is the fastest path
 2. **GLTF** is already available and should be leveraged when possible
 3. **Custom AssetLoader** implementation provides the most control

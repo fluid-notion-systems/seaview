@@ -17,7 +17,7 @@ fn main() {
     let args = Args::parse_args();
 
     if args.verbose {
-        info!("Starting Shoreview mesh viewer...");
+        info!("Starting Seaview mesh viewer...");
         if let Some(ref path) = args.path {
             info!("Path provided: {:?}", path);
         }

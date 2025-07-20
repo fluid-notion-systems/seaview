@@ -40,8 +40,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\nTest sequences created successfully!");
     println!("Try running:");
-    println!("  cargo run --bin shoreview test_sequences/cube_rotation");
-    println!("  cargo run --bin shoreview test_sequences/particles");
+    println!("  cargo run --bin seaview test_sequences/cube_rotation");
+    println!("  cargo run --bin seaview test_sequences/particles");
 
     Ok(())
 }

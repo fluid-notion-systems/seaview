@@ -1,6 +1,6 @@
 # Bevy Remote Protocol (BRP) Extras Integration
 
-This document describes the BRP extras functionality integrated into Shoreview.
+This document describes the BRP extras functionality integrated into Seaview.
 
 ## About bevy_brp_extras
 
@@ -24,7 +24,7 @@ The BrpExtrasPlugin adds the following Bevy Remote Protocol methods:
 
 ## Usage
 
-The plugin is automatically added to Shoreview and listens on BRP default port 15702.
+The plugin is automatically added to Seaview and listens on BRP default port 15702.
 
 ### Custom Port
 
@@ -42,7 +42,7 @@ BRP_PORT=8080 cargo run
   - `path` (string, required): File path where the screenshot should be saved
 - **Returns**: Success status with the absolute path where the screenshot will be saved
 
-**Note**: Screenshots require the `png` feature to be enabled in Bevy (already enabled in Shoreview).
+**Note**: Screenshots require the `png` feature to be enabled in Bevy (already enabled in Seaview).
 
 ### Shutdown
 - **Method**: `brp_extras/shutdown`
@@ -98,7 +98,7 @@ curl -X POST http://localhost:15702/brp_extras/set_debug_mode \
 
 ## Integration with Zed
 
-The BRP extras plugin enables remote control of the Shoreview application from external tools like Zed. With the BRP server running, you can:
+The BRP extras plugin enables remote control of the Seaview application from external tools like Zed. With the BRP server running, you can:
 
 1. Take screenshots of the rendered scene
 2. Send keyboard input to navigate the camera

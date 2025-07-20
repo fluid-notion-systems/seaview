@@ -134,13 +134,13 @@ The `bevy_brp_mcp` server is a Model Context Protocol (MCP) server that provides
     - Get OpenRPC specification
     - Discover method signatures
 
-## Usage with Shoreview
+## Usage with Seaview
 
-Since Shoreview already has BRP support via the RemotePlugin, you can:
+Since Seaview already has BRP support via the RemotePlugin, you can:
 
 1. Launch the app with a sequence directory:
    ```
-   bevy_launch_app with app_name="shoreview"
+   bevy_launch_app with app_name="seaview"
    ```
 
 2. Query loaded meshes:

@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let matches = Command::new("stl_info")
         .version("1.0")
-        .author("Shoreview STL Info Tool")
+        .author("Seaview STL Info Tool")
         .about("Display information about STL files and convert between formats")
         .arg(arg!(<FILE> "STL file to analyze"))
         .arg(arg!(--"convert-ascii" "Convert binary STL to ASCII format"))

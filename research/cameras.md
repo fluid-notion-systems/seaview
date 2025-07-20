@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document researches available camera controller plugins for Bevy 0.14+, evaluating their suitability for the Shoreview mesh sequence viewer project. The goal is to identify the best camera solution for implementing FPS-style controls with recording/playback capabilities.
+This document researches available camera controller plugins for Bevy 0.14+, evaluating their suitability for the Seaview mesh sequence viewer project. The goal is to identify the best camera solution for implementing FPS-style controls with recording/playback capabilities.
 
 ## Available Camera Plugins
 
@@ -175,7 +175,7 @@ This document researches available camera controller plugins for Bevy 0.14+, eva
 | bevy_fpc | 0.13 | FPS | Yes (Rapier) | No | Moderate |
 | bevy_fly_camera | 0.10 | Fly | No | No | Inactive |
 
-## Recommendations for Shoreview
+## Recommendations for Seaview
 
 ### Primary Recommendation: Custom Implementation with smooth-bevy-cameras as Base
 
@@ -273,7 +273,7 @@ fn add_camera_plugins(app: &mut App) {
 
 ## Conclusion
 
-For the Shoreview project, building a custom camera system on top of smooth-bevy-cameras' algorithms provides the best balance of:
+For the Seaview project, building a custom camera system on top of smooth-bevy-cameras' algorithms provides the best balance of:
 - Modern Bevy compatibility
 - Smooth controls
 - Flexibility for recording features

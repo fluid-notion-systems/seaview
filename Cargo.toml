@@ -1,11 +1,11 @@
 [workspace]
-members = ["crates/shoreview"]
+members = ["crates/seaview"]
 resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-authors = ["Shoreview Contributors"]
+authors = ["Seaview Contributors"]
 
 [workspace.dependencies]
 bevy = { version = "0.16", default-features = false, features = [

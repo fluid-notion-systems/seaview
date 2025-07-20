@@ -1,6 +1,6 @@
-# Shoreview Research Documentation
+# Seaview Research Documentation
 
-This directory contains research and planning documents for the Shoreview mesh sequence viewer project.
+This directory contains research and planning documents for the Seaview mesh sequence viewer project.
 
 ## Documents
 
@@ -18,7 +18,7 @@ Research and evaluation of available Bevy camera controller plugins for implemen
 
 - Analysis of 6+ camera plugins
 - Version compatibility and feature comparison
-- Recommendations for Shoreview implementation
+- Recommendations for Seaview implementation
 - Custom implementation strategy
 - **Status**: Research complete, implementation pending
 
