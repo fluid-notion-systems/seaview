@@ -43,6 +43,7 @@ pub struct SequenceManager {
 }
 
 impl SequenceManager {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             current_sequence: None,
@@ -172,8 +173,9 @@ impl Sequence {
     }
 
     /// Sort frames by their frame number
+    #[allow(dead_code)]
     pub fn sort_frames(&mut self) {
-        self.frames.sort_by_key(|f| f.frame_number);
+        self.frames.sort_by_key(|frame| frame.frame_number);
     }
 }
 
@@ -183,10 +185,12 @@ pub struct FrameInfo {
     /// Path to the frame file
     pub path: PathBuf,
     /// Frame number extracted from filename
+    #[allow(dead_code)]
     pub frame_number: usize,
     /// Original filename
     pub filename: String,
     /// File size in bytes
+    #[allow(dead_code)]
     pub file_size: u64,
 }
 
@@ -220,8 +224,10 @@ pub enum SequenceEvent {
     /// Playback stopped
     PlaybackStopped,
     /// Sequence discovery started
+    #[allow(dead_code)]
     DiscoveryStarted(PathBuf),
     /// Sequence discovery completed
+    #[allow(dead_code)]
     DiscoveryCompleted(usize),
     /// Error occurred
     Error(String),

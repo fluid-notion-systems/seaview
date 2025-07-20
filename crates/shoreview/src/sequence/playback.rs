@@ -273,36 +273,49 @@ fn update_playback_ui(
 /// Controls for sequence playback
 #[derive(Debug, Clone, Copy)]
 pub enum PlaybackControl {
+    #[allow(dead_code)]
     Play,
+    #[allow(dead_code)]
     Pause,
+    #[allow(dead_code)]
     Stop,
+    #[allow(dead_code)]
     NextFrame,
+    #[allow(dead_code)]
     PreviousFrame,
+    #[allow(dead_code)]
     FirstFrame,
+    #[allow(dead_code)]
     LastFrame,
+    #[allow(dead_code)]
     SetSpeed(f32),
+    #[allow(dead_code)]
     JumpToFrame(usize),
+    #[allow(dead_code)]
     JumpToPercentage(f32),
 }
 
 /// Component that sends playback control commands
 #[derive(Component)]
 pub struct PlaybackControlSender {
+    #[allow(dead_code)]
     pub control: PlaybackControl,
 }
 
 /// Playback state information
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PlaybackState {
-    pub is_playing: bool,
     pub current_frame: usize,
     pub total_frames: usize,
+    pub is_playing: bool,
     pub playback_speed: f32,
     pub current_time: f32,
     pub total_time: f32,
 }
 
 impl PlaybackState {
+    #[allow(dead_code)]
     pub fn from_manager(manager: &SequenceManager) -> Option<Self> {
         let sequence = manager.current_sequence()?;
         let total_frames = sequence.frame_count();
@@ -319,6 +332,7 @@ impl PlaybackState {
         })
     }
 
+    #[allow(dead_code)]
     pub fn progress(&self) -> f32 {
         if self.total_frames > 0 {
             self.current_frame as f32 / self.total_frames as f32
@@ -331,17 +345,23 @@ impl PlaybackState {
 /// Resource for tracking playback statistics
 #[derive(Resource, Default)]
 pub struct PlaybackStats {
+    #[allow(dead_code)]
     pub frames_played: usize,
+    #[allow(dead_code)]
     pub total_play_time: f32,
+    #[allow(dead_code)]
     pub average_frame_time: f32,
+    #[allow(dead_code)]
     pub dropped_frames: usize,
 }
 
 impl PlaybackStats {
+    #[allow(dead_code)]
     pub fn reset(&mut self) {
         *self = Self::default();
     }
 
+    #[allow(dead_code)]
     pub fn update(&mut self, frame_time: f32) {
         self.frames_played += 1;
         self.total_play_time += frame_time;

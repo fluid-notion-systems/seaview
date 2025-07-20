@@ -33,14 +33,18 @@ pub struct LoaderConfig {
     /// Maximum number of meshes to keep in cache
     pub cache_size: usize,
     /// Number of frames to prefetch ahead
+    #[allow(dead_code)]
     pub prefetch_ahead: usize,
     /// Number of frames to keep behind
+    #[allow(dead_code)]
     pub keep_behind: usize,
     /// Whether to enable async loading
+    #[allow(dead_code)]
     pub async_loading: bool,
     /// Whether to use fallback mesh for failed loads
     pub use_fallback_mesh: bool,
     /// Whether to automatically fix inverted normals
+    #[allow(dead_code)]
     pub fix_inverted_normals: bool,
 }
 
@@ -219,6 +223,7 @@ impl MeshCache {
     }
 
     /// Check if a mesh is loaded and ready
+    #[allow(dead_code)]
     pub fn is_loaded(&self, path: &PathBuf, meshes: &Assets<Mesh>) -> bool {
         self.cache
             .get(path)
@@ -472,6 +477,7 @@ fn update_cache_stats(
 }
 
 /// Event for loading progress updates
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct LoadingProgressEvent {
     pub current: usize,
@@ -480,6 +486,7 @@ pub struct LoadingProgressEvent {
 }
 
 /// Structure to hold loading progress information
+#[allow(dead_code)]
 pub struct LoadingProgress {
     pub current: usize,
     pub total: usize,

@@ -192,15 +192,20 @@ fn scan_directory(
 /// Component for displaying discovered sequences in UI
 #[derive(Component)]
 pub struct SequenceList {
+    #[allow(dead_code)]
     pub sequences: Vec<SequenceInfo>,
 }
 
 /// Basic info about a discovered sequence
 #[derive(Debug, Clone)]
 pub struct SequenceInfo {
+    #[allow(dead_code)]
     pub name: String,
+    #[allow(dead_code)]
     pub frame_count: usize,
+    #[allow(dead_code)]
     pub pattern: String,
+    #[allow(dead_code)]
     pub base_dir: PathBuf,
 }
 
