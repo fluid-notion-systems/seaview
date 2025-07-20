@@ -47,46 +47,43 @@ fn setup(
         FpsCamera::default(),
     ));
 
-    // Add a light
-    commands.spawn((
-        PointLight {
-            intensity: 2000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(4.0, 8.0, 4.0),
-    ));
-
-    // Add another light from a different angle
-    commands.spawn((
-        PointLight {
-            intensity: 1500.0,
-            shadows_enabled: false,
-            ..default()
-        },
-        Transform::from_xyz(-4.0, 6.0, -4.0),
-    ));
-
-    // Add a directional light for better overall illumination
+    // Add a directional light for overall illumination
     commands.spawn((
         DirectionalLight {
             illuminance: 10000.0,
             shadows_enabled: true,
             ..default()
         },
-        Transform::from_rotation(Quat::from_euler(
-            EulerRot::XYZ,
-            -std::f32::consts::FRAC_PI_4,
-            -std::f32::consts::FRAC_PI_4,
-            0.0,
-        )),
+        Transform::from_xyz(0.0, 1.0, 0.0).looking_at(Vec3::new(-0.3, -1.0, -0.5), Vec3::Y),
     ));
 
-    // Add ambient light for better visibility
+    // Add a point light from above
+    commands.spawn((
+        PointLight {
+            intensity: 50000.0,
+            shadows_enabled: false,
+            range: 1000.0,
+            ..default()
+        },
+        Transform::from_xyz(50.0, 150.0, 50.0),
+    ));
+
+    // Add another point light from a different angle for better surface visibility
+    commands.spawn((
+        PointLight {
+            intensity: 30000.0,
+            shadows_enabled: false,
+            range: 1000.0,
+            ..default()
+        },
+        Transform::from_xyz(-50.0, 100.0, -50.0),
+    ));
+
+    // Add ambient light for overall brightness
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
-        brightness: 80.0,
-        affects_lightmapped_meshes: false,
+        brightness: 500.0,
+        ..default()
     });
 }
 
