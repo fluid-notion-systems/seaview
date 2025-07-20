@@ -16,38 +16,39 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
    - [ ] Create basic plugin architecture
 
 2. **Basic Rendering Pipeline**
-   - [ ] Implement minimal Bevy app with 3D scene
-   - [ ] Set up basic camera system (static first)
-   - [ ] Implement basic lighting setup
+   - [x] Implement minimal Bevy app with 3D scene
+   - [x] Set up basic camera system (static first)
+   - [x] Implement basic lighting setup
    - [ ] Create ground plane and reference objects
 
 
 
-<!-- 4. **Mesh Format Abstraction**
-   - [ ] Design unified mesh loading interface
-   - [ ] Create mesh format detection system
-   - [ ] Implement error handling for loading
+3. **Mesh Format Abstraction**
+   - [x] Design unified mesh loading interface
+   - [x] Create mesh format detection system
+   - [x] Implement error handling for loading
    - [ ] Create plugin system for format loaders
 
-5. **Format Implementations**
+4. **Format Implementations**
    - [x] STL loader (already implemented)
    - [ ] PLY loader (using bevy_ply or custom)
    - [ ] OBJ loader with normals/UV support
    - [ ] GLTF/GLB support (bonus)
 
-6. **Mesh Processing Pipeline**
-   - [ ] Vertex/index buffer management
-   - [ ] Normal calculation for formats lacking them
+5. **Mesh Processing Pipeline**
+   - [x] Vertex/index buffer management
+   - [x] Normal calculation for formats lacking them
    - [ ] Bounding box calculation
    - [ ] Basic mesh statistics
-   - [ ] Mesh validation and repair -->
+   - [ ] Mesh validation and repair
 
 ### Deliverables:
-- Basic app that can load and display stl
-- Modular plugin structure with format loader plugins
-- File system utilities
-- Unified mesh representation
-- Mesh processing utilities
+- [x] Basic app that can load and display STL files from any filesystem path
+- [x] Direct STL file loading (bypassing Bevy asset system)
+- [x] CLI argument parsing for file/directory input
+- [ ] Modular plugin structure with format loader plugins
+- [x] Unified mesh representation
+- [x] Basic mesh processing utilities
 
 ## Phase 2: Sequence Management
 **Duration: 3-4 weeks**
@@ -55,30 +56,32 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 
 ### Milestones:
 1. **File System Foundation**
-   - [ ] Design file discovery trait/interface
-   - [ ] Implement directory scanning
-   - [ ] Build path management utilities
+   - [x] Design file discovery trait/interface
+   - [x] Implement directory scanning
+   - [x] Build path management utilities
 2. **Sequence Discovery**
-   - [ ] Pattern-based sequence detection
-   - [ ] Frame number extraction
-   - [ ] Sequence validation
+   - [x] Pattern-based sequence detection
+   - [x] Frame number extraction
+   - [x] Sequence validation
 
 3. **Memory Management**
-   - [ ] Implement mesh pool with configurable size
-   - [ ] LRU cache for loaded meshes
-   - [ ] Preloading/prefetching system
-   - [ ] Memory usage monitoring
+   - [x] Implement mesh pool with configurable size
+   - [x] LRU cache for loaded meshes
+   - [x] Preloading/prefetching system
+   - [x] Memory usage monitoring
 
 4. **Playback System**
-   - [ ] Timeline representation
-   - [ ] Play/pause/stop controls
-   - [ ] Frame rate control
-   - [ ] Frame stepping (forward/backward)
+   - [x] Timeline representation
+   - [x] Play/pause/stop controls
+   - [x] Frame rate control
+   - [x] Frame stepping (forward/backward)
 
 ### Deliverables:
-- Efficient mesh sequence loading
-- Smooth playback of sequences
-- Memory-conscious design
+- [x] Efficient mesh sequence loading with direct filesystem access
+- [x] Smooth playback of sequences with visual mesh updates
+- [x] Memory-conscious design with LRU caching
+- [x] Support for directory-based sequence discovery
+- [x] Real-time sequence preloading with progress tracking
 
 ## Phase 3: Advanced Camera System
 **Duration: 3-4 weeks**
@@ -88,7 +91,8 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 1. **Interactive Camera**
    - [x] FPS-style mouse look (already implemented)
    - [x] WASD movement (already implemented)
-   - [ ] Speed modifiers
+   - [x] Speed modifiers (Alt for slower movement)
+   - [x] Cursor grab/release with Escape key
    - [ ] Smooth movement interpolation
 
 2. **Camera Recording**
@@ -107,7 +111,7 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 - Fully interactive camera system
 - Camera recording and playback
 - Camera path visualization
-
+<!--
 ## Phase 4: Particle and Point Cloud Rendering
 **Duration: 2-3 weeks**
 **Goal: Efficient rendering of particle data**
@@ -127,7 +131,7 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 3. **Render Optimization**
    - [ ] Frustum culling
    - [ ] LOD for particles
-   - [ ] Render caching system
+   - [ ] Render caching system -->
 
 ### Deliverables:
 - Efficient particle rendering
@@ -305,23 +309,31 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 
 ### Completed:
 - [x] Basic Bevy 0.16 application setup
-- [x] STL file loading support
-- [x] FPS-style camera controls (WASD movement, mouse look)
+- [x] STL file loading support (direct filesystem access, no asset system dependency)
+- [x] FPS-style camera controls (WASD movement, mouse look, cursor grab/release)
 - [x] Basic lighting and materials
-- [x] CLI argument parsing
+- [x] CLI argument parsing for single files and directories
 - [x] Bevy Remote Protocol integration
+- [x] File system utilities and sequence discovery
+- [x] Pattern-based sequence detection with regex support
+- [x] Mesh sequence loading with LRU caching
+- [x] Playback system with play/pause/step controls
+- [x] Memory-efficient mesh preloading
+- [x] Visual mesh updates during sequence playback
+- [x] Debug logging and progress tracking
 
 ### In Progress:
-- [ ] File system utilities and discovery
 - [ ] Additional mesh format support (PLY, OBJ)
-- [ ] Mesh processing pipeline
+- [ ] Camera recording and playback system
+- [ ] UI framework integration
 
 ## Next Steps
 
-1. **Complete Phase 1 foundation** - focus on file discovery and additional format support
+1. **Complete Phase 1 foundation** - focus on additional format support (PLY, OBJ)
 2. **Create abstraction layer** for mesh loading plugins
 3. **Implement PLY and OBJ loaders** as separate plugins
-4. **Design sequence detection system** for Phase 2
-5. **Establish performance benchmarks** early
+4. **Begin Phase 3** - advanced camera features (recording/playback)
+5. **Add UI framework** for better user controls
+6. **Establish performance benchmarks** for optimization
 
 This reimplementation will result in a modern, maintainable, and performant mesh visualization tool that exceeds the capabilities of the original mesh-ripper while addressing its limitations.

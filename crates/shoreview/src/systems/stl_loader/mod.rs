@@ -45,6 +45,8 @@ fn load_initial_stl_file(
                     metallic: 0.1,
                     perceptual_roughness: 0.8,
                     reflectance: 0.5,
+                    double_sided: false,
+                    cull_mode: Some(bevy::render::render_resource::Face::Back),
                     ..default()
                 });
 
@@ -74,6 +76,8 @@ fn load_initial_stl_file(
             base_color: Color::srgb(0.5, 0.5, 1.0),
             metallic: 0.1,
             perceptual_roughness: 0.8,
+            double_sided: false,
+            cull_mode: Some(bevy::render::render_resource::Face::Back),
             ..default()
         });
 

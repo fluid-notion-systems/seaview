@@ -185,6 +185,8 @@ impl MeshCache {
                 metallic: 0.1,
                 perceptual_roughness: 0.8,
                 reflectance: 0.5,
+                double_sided: false,
+                cull_mode: Some(bevy::render::render_resource::Face::Back),
                 ..default()
             });
             self.material_handle = Some(handle.clone());

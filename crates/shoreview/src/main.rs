@@ -43,7 +43,7 @@ fn setup(
     // Spawn the FPS camera
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(-2.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(100.0, 100.0, 100.0).looking_at(Vec3::new(37.0, 37.0, 27.5), Vec3::Y),
         FpsCamera::default(),
     ));
 
@@ -88,16 +88,6 @@ fn setup(
         brightness: 80.0,
         affects_lightmapped_meshes: false,
     });
-
-    // Add a ground plane
-    commands.spawn((
-        Mesh3d(meshes.add(Plane3d::default().mesh().size(10.0, 10.0))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.3, 0.5, 0.3),
-            ..default()
-        })),
-        Transform::from_xyz(0.0, -1.0, 0.0),
-    ));
 }
 
 /// System that handles the input path and decides whether to load a single file or discover a sequence
