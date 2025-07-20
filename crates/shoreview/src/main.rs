@@ -7,7 +7,7 @@ mod systems;
 mod ui;
 
 use cli::Args;
-use sequence::{discovery::DiscoverSequenceRequest, SequenceManager, SequencePlugin};
+use sequence::{discovery::DiscoverSequenceRequest, SequencePlugin};
 use systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
 use systems::stl_loader::{StlFilePath, StlLoaderPlugin};
 use ui::UIPlugin;
