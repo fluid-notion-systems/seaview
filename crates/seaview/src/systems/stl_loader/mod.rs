@@ -1,4 +1,3 @@
-use crate::materials::WaterMaterials;
 use crate::sequence::loader::{load_stl_file_optimized, MeshCache};
 use bevy::prelude::*;
 use std::path::PathBuf;
@@ -41,10 +40,16 @@ fn load_initial_stl_file(
             Ok((mesh, _stats)) => {
                 let mesh_handle = meshes.add(mesh);
 
-                // Create a material for the mesh with SSR-friendly properties
-                let material = materials.add(WaterMaterials::with_single_sided(
-                    WaterMaterials::deep_ocean(WaterMaterials::default_ocean_blue()),
-                ));
+                // Create a material for the mesh
+                let material = materials.add(StandardMaterial {
+                    base_color: Color::srgb(0.8, 0.8, 0.8),
+                    metallic: 0.1,
+                    perceptual_roughness: 0.8,
+                    reflectance: 0.5,
+                    double_sided: false,
+                    cull_mode: Some(bevy::render::render_resource::Face::Back),
+                    ..default()
+                });
 
                 // Spawn the mesh entity
                 let entity = commands
@@ -68,9 +73,14 @@ fn load_initial_stl_file(
 
         // If no STL file is provided, create a demo cube
         let mesh_handle = meshes.add(Mesh::from(Cuboid::new(2.0, 2.0, 2.0)));
-        let material = materials.add(WaterMaterials::with_single_sided(
-            WaterMaterials::deep_ocean(WaterMaterials::default_ocean_blue()),
-        ));
+        let material = materials.add(StandardMaterial {
+            base_color: Color::srgb(0.5, 0.5, 1.0),
+            metallic: 0.1,
+            perceptual_roughness: 0.8,
+            double_sided: false,
+            cull_mode: Some(bevy::render::render_resource::Face::Back),
+            ..default()
+        });
 
         let entity = commands
             .spawn((

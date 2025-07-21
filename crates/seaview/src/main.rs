@@ -1,16 +1,8 @@
-use bevy::{
-    core_pipeline::{
-        bloom::{Bloom, BloomCompositeMode, BloomPrefilter},
-        tonemapping::Tonemapping,
-    },
-    pbr::{DefaultOpaqueRendererMethod, ScreenSpaceReflections},
-    prelude::*,
-};
+use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
 
 mod cli;
 mod coordinates;
-mod materials;
 mod sequence;
 mod systems;
 mod ui;
@@ -48,7 +40,6 @@ fn main() {
     };
 
     App::new()
-        .insert_resource(DefaultOpaqueRendererMethod::deferred())
         .add_plugins(DefaultPlugins)
         .add_plugins(StlLoaderPlugin)
         .add_plugins(SequencePlugin)
@@ -65,31 +56,12 @@ fn setup(
     mut commands: Commands,
     _meshes: ResMut<Assets<Mesh>>,
     _materials: ResMut<Assets<StandardMaterial>>,
-    _asset_server: Res<AssetServer>,
 ) {
-    // Spawn the FPS camera with SSR and other post-processing effects
+    // Spawn the FPS camera
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(100.0, 100.0, 100.0).looking_at(Vec3::new(37.0, 37.0, 27.5), Vec3::Y),
         FpsCamera::default(),
-        Camera {
-            hdr: true,
-            ..default()
-        },
-        Msaa::Off, // Required for deferred rendering
-        ScreenSpaceReflections::default(),
-        Tonemapping::TonyMcMapface,
-        Bloom {
-            intensity: 0.3,
-            composite_mode: BloomCompositeMode::Additive,
-            low_frequency_boost: 0.5,
-            high_pass_frequency: 1.0,
-            prefilter: BloomPrefilter {
-                threshold: 1.5,
-                threshold_softness: 0.5,
-            },
-            ..default()
-        },
     ));
 
     // Add a directional light for overall illumination
@@ -125,10 +97,9 @@ fn setup(
     ));
 
     // Add ambient light for overall brightness
-    // Increased brightness to compensate for potential lack of environment map
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
-        brightness: 800.0,
+        brightness: 500.0,
         ..default()
     });
 }

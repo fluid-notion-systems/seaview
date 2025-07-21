@@ -1,7 +1,6 @@
 //! Sequence loader module for efficient mesh loading with caching
 
 use super::{SequenceEvent, SequenceManager};
-use crate::materials::WaterMaterials;
 use bevy::prelude::*;
 use std::collections::HashMap;
 use std::fs::File;
@@ -242,9 +241,16 @@ impl MeshCache {
         } else {
             // Log material creation for debugging
             info!("Creating material with double-sided rendering enabled");
-            let handle = materials.add(WaterMaterials::with_double_sided(
-                WaterMaterials::deep_ocean(WaterMaterials::default_ocean_blue()),
-            ));
+            let handle = materials.add(StandardMaterial {
+                base_color: Color::srgb(0.9, 0.9, 0.9),
+                metallic: 0.0,
+                perceptual_roughness: 0.5,
+                reflectance: 0.3,
+                double_sided: true, // Enable double-sided rendering to debug normal issues
+                cull_mode: None,    // Disable culling temporarily to see all faces
+                unlit: false,       // Ensure the material is lit
+                ..default()
+            });
             self.material_handle = Some(handle.clone());
             handle
         }
