@@ -41,6 +41,7 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(systems::parallel_loader::AsyncStlLoaderPlugin)
         .add_plugins(StlLoaderPlugin)
         .add_plugins(SequencePlugin)
         .add_plugins(UIPlugin)
