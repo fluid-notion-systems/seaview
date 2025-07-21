@@ -1,6 +1,8 @@
 //! Sequence loader module for efficient mesh loading with caching
 
 use super::{SequenceEvent, SequenceManager};
+use crate::sequence::async_cache::{log_cache_stats, update_cache_from_loads, AsyncMeshCache};
+use crate::systems::parallel_loader::{AsyncStlLoader, LoadCompleteEvent, LoadPriority};
 use bevy::prelude::*;
 use std::collections::HashMap;
 use std::fs::File;
@@ -12,15 +14,17 @@ pub struct SequenceLoaderPlugin;
 
 impl Plugin for SequenceLoaderPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<MeshCache>()
+        app.init_resource::<AsyncMeshCache>()
             .init_resource::<LoaderConfig>()
             .init_resource::<LoadingState>()
+            .add_event::<LoadCompleteEvent>()
             .add_systems(
                 Update,
                 (
                     preload_sequence_meshes,
+                    update_cache_from_loads,
                     handle_frame_changes,
-                    update_cache_stats,
+                    log_cache_stats,
                 )
                     .chain(),
             );
@@ -126,158 +130,26 @@ impl LoadingState {
     }
 }
 
-/// Cache for loaded meshes
-#[derive(Resource, Default)]
-pub struct MeshCache {
-    /// Map from file path to cached mesh handle
-    cache: HashMap<PathBuf, Handle<Mesh>>,
-    /// Access order for LRU eviction
-    access_order: Vec<PathBuf>,
-    /// Current mesh entity
-    pub current_mesh_entity: Option<Entity>,
-    /// Material handle for all meshes
-    material_handle: Option<Handle<StandardMaterial>>,
-    /// Track the last displayed frame to avoid redundant updates
-    last_displayed_frame: Option<usize>,
-    /// Statistics for tracking loading issues
-    stats: LoadingStats,
-}
+// MeshCache has been replaced by AsyncMeshCache in async_cache.rs
 
 /// Statistics for tracking mesh loading
+/// Statistics for mesh loading
 #[derive(Default, Debug)]
 pub struct LoadingStats {
-    /// Total files attempted to load
     pub total_attempts: usize,
-    /// Successfully loaded files
     pub successful_loads: usize,
-    /// Files that failed to load
     pub failed_loads: usize,
-    /// Files that used fallback mesh
     pub fallback_used: usize,
-    /// Total faces processed
     pub total_faces_processed: usize,
-    /// Total faces skipped due to errors
     pub total_faces_skipped: usize,
-}
-
-impl MeshCache {
-    /// Get or load a mesh from cache
-    pub fn get_or_load(
-        &mut self,
-        path: &PathBuf,
-        meshes: &mut Assets<Mesh>,
-        use_fallback: bool,
-    ) -> Option<Handle<Mesh>> {
-        // Update access order
-        if let Some(pos) = self.access_order.iter().position(|p| p == path) {
-            self.access_order.remove(pos);
-        }
-        self.access_order.push(path.clone());
-
-        // Check if already cached
-        if let Some(handle) = self.cache.get(path) {
-            return Some(handle.clone());
-        }
-
-        // Track loading attempt
-        self.stats.total_attempts += 1;
-
-        // Load the mesh
-        match load_stl_file_optimized(path) {
-            Ok((mesh, stats)) => {
-                let handle = meshes.add(mesh);
-                self.cache.insert(path.clone(), handle.clone());
-                self.stats.successful_loads += 1;
-                self.stats.total_faces_processed += stats.faces_processed;
-                self.stats.total_faces_skipped += stats.faces_skipped;
-
-                if stats.faces_skipped > 0 {
-                    let skip_percentage = (stats.faces_skipped as f32
-                        / (stats.faces_processed + stats.faces_skipped) as f32)
-                        * 100.0;
-                    info!(
-                        "Loaded {:?} with {:.1}% faces skipped",
-                        path.file_name().unwrap_or_default(),
-                        skip_percentage
-                    );
-                }
-
-                Some(handle)
-            }
-            Err(e) => {
-                self.stats.failed_loads += 1;
-                warn!("Failed to load STL file {:?}: {}", path, e);
-
-                if use_fallback {
-                    warn!("Using fallback mesh for {:?}", path);
-                    let fallback_mesh = create_fallback_mesh();
-                    let handle = meshes.add(fallback_mesh);
-                    self.cache.insert(path.clone(), handle.clone());
-                    self.stats.fallback_used += 1;
-                    Some(handle)
-                } else {
-                    None
-                }
-            }
-        }
-    }
-
-    /// Check if a mesh is loaded and ready
-    #[allow(dead_code)]
-    pub fn is_loaded(&self, path: &PathBuf, meshes: &Assets<Mesh>) -> bool {
-        self.cache
-            .get(path)
-            .map(|handle| meshes.get(handle).is_some())
-            .unwrap_or(false)
-    }
-
-    /// Get or create material handle
-    pub fn get_material(
-        &mut self,
-        materials: &mut Assets<StandardMaterial>,
-    ) -> Handle<StandardMaterial> {
-        if let Some(handle) = &self.material_handle {
-            handle.clone()
-        } else {
-            // Log material creation for debugging
-            info!("Creating material with double-sided rendering enabled");
-            let handle = materials.add(StandardMaterial {
-                base_color: Color::srgb(0.9, 0.9, 0.9),
-                metallic: 0.0,
-                perceptual_roughness: 0.5,
-                reflectance: 0.3,
-                double_sided: true, // Enable double-sided rendering to debug normal issues
-                cull_mode: None,    // Disable culling temporarily to see all faces
-                unlit: false,       // Ensure the material is lit
-                ..default()
-            });
-            self.material_handle = Some(handle.clone());
-            handle
-        }
-    }
-
-    /// Evict least recently used meshes to stay within cache size
-    pub fn evict_lru(&mut self, max_size: usize) {
-        while self.cache.len() > max_size && !self.access_order.is_empty() {
-            if let Some(path) = self.access_order.first().cloned() {
-                self.cache.remove(&path);
-                self.access_order.remove(0);
-            }
-        }
-    }
-
-    /// Get cache statistics
-    pub fn stats(&self) -> &LoadingStats {
-        &self.stats
-    }
 }
 
 /// System to preload all sequence meshes at startup
 fn preload_sequence_meshes(
     sequence_manager: Res<SequenceManager>,
     mut loading_state: ResMut<LoadingState>,
-    mut mesh_cache: ResMut<MeshCache>,
-    mut meshes: ResMut<Assets<Mesh>>,
+    mut mesh_cache: ResMut<AsyncMeshCache>,
+    async_loader: Res<AsyncStlLoader>,
     config: Res<LoaderConfig>,
 ) {
     // Check if we need to start preloading
@@ -287,10 +159,32 @@ fn preload_sequence_meshes(
                 // Initialize preloading
                 loading_state.start_preloading(sequence.frame_count());
 
-                // Queue all frames for loading
+                // Queue all frames for loading with appropriate priorities
+                let current_frame = sequence_manager.current_frame;
                 for i in 0..sequence.frame_count() {
                     if let Some(path) = sequence.frame_path(i) {
-                        loading_state.loading_queue.push(path.to_path_buf());
+                        // Determine priority based on distance from current frame
+                        let priority = if i == current_frame {
+                            LoadPriority::Critical
+                        } else if i.abs_diff(current_frame) <= 2 {
+                            LoadPriority::High
+                        } else if i.abs_diff(current_frame) <= 5 {
+                            LoadPriority::Normal
+                        } else {
+                            LoadPriority::Low
+                        };
+
+                        // Queue for async loading
+                        if !mesh_cache.is_loaded(&path.to_path_buf())
+                            && !mesh_cache.is_loading(&path.to_path_buf())
+                        {
+                            mesh_cache.get_or_queue(
+                                &path.to_path_buf(),
+                                &async_loader,
+                                priority,
+                                config.use_fallback_mesh,
+                            );
+                        }
                     }
                 }
             }
@@ -298,46 +192,17 @@ fn preload_sequence_meshes(
         return;
     }
 
-    // Start loading assets
-    let paths_to_load: Vec<_> = loading_state
-        .loading_queue
-        .iter()
-        .filter(|path| !loading_state.loading_handles.contains_key(*path))
-        .cloned()
-        .collect();
-
-    for path in paths_to_load {
-        if let Some(handle) = mesh_cache.get_or_load(&path, &mut meshes, config.use_fallback_mesh) {
-            loading_state.loading_handles.insert(path, handle);
-        }
-    }
-
-    // Check for completed loads
-    let mut completed_paths = Vec::new();
-    for (path, handle) in &loading_state.loading_handles {
-        if meshes.get(handle).is_some() {
-            completed_paths.push(path.clone());
-        }
-    }
-
-    // Remove completed from loading handles and update progress
-    for path in completed_paths {
-        loading_state.loading_handles.remove(&path);
-        loading_state.frames_loaded += 1;
-
-        // Log progress every 10%
-        let progress = loading_state.progress();
-        if (progress * 10.0) as u32 > ((progress - 0.1) * 10.0) as u32 {
-            info!("{}", loading_state.progress_text());
-        }
-    }
-
-    // Check if preloading is complete
-    if loading_state.frames_loaded >= loading_state.total_frames {
+    // Check loading progress
+    let progress = mesh_cache.loading_progress();
+    if progress >= 1.0 {
         loading_state.finish_preloading();
-
         // Ensure cache size is respected
         mesh_cache.evict_lru(config.cache_size);
+    } else {
+        // Log progress every 10%
+        if (progress * 10.0) as u32 > ((loading_state.progress() * 10.0) as u32) {
+            info!("Loading progress: {:.1}%", progress * 100.0);
+        }
     }
 }
 
@@ -346,12 +211,13 @@ fn preload_sequence_meshes(
 fn handle_frame_changes(
     mut commands: Commands,
     mut sequence_manager: ResMut<SequenceManager>,
-    mut mesh_cache: ResMut<MeshCache>,
-    mut meshes: ResMut<Assets<Mesh>>,
+    mut mesh_cache: ResMut<AsyncMeshCache>,
+    async_loader: Res<AsyncStlLoader>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut events: EventWriter<SequenceEvent>,
     time: Res<Time>,
     loading_state: Res<LoadingState>,
+    config: Res<LoaderConfig>,
 ) {
     // Don't update frames while preloading
     if loading_state.is_preloading {
@@ -396,8 +262,8 @@ fn handle_frame_changes(
             current_frame, path
         );
 
-        // Always try to get or load the mesh for the current frame
-        if let Some(mesh_handle) = mesh_cache.get_or_load(path, &mut meshes, false) {
+        // Check if mesh is already cached
+        if let Some(mesh_handle) = mesh_cache.cache.get(path).cloned() {
             // Remove old mesh entity
             if let Some(entity) = mesh_cache.current_mesh_entity {
                 info!("Despawning old mesh entity: {:?}", entity);
@@ -430,7 +296,14 @@ fn handle_frame_changes(
             mesh_cache.current_mesh_entity = Some(entity);
             mesh_cache.last_displayed_frame = Some(current_frame);
         } else {
-            warn!("Failed to get mesh handle from cache for path: {:?}", path);
+            // Mesh not cached yet, queue it for loading with high priority
+            mesh_cache.get_or_queue(
+                path,
+                &async_loader,
+                LoadPriority::Critical,
+                config.use_fallback_mesh,
+            );
+            info!("Queued mesh for loading: {:?}", path);
         }
     } else {
         warn!(
@@ -441,47 +314,7 @@ fn handle_frame_changes(
 }
 
 /// System to update cache statistics
-fn update_cache_stats(
-    mesh_cache: Res<MeshCache>,
-    _loading_state: Res<LoadingState>,
-    _config: Res<LoaderConfig>,
-) {
-    static mut LAST_LOG: f64 = 0.0;
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs_f64();
-
-    unsafe {
-        if now - LAST_LOG > 5.0 {
-            LAST_LOG = now;
-            let stats = mesh_cache.stats();
-            if stats.total_attempts > 0 {
-                let success_rate =
-                    (stats.successful_loads as f32 / stats.total_attempts as f32) * 100.0;
-                info!(
-                    "Cache stats: {} meshes cached, {:.1}% success rate ({}/{} loaded, {} fallbacks)",
-                    mesh_cache.cache.len(),
-                    success_rate,
-                    stats.successful_loads,
-                    stats.total_attempts,
-                    stats.fallback_used
-                );
-
-                if stats.total_faces_skipped > 0 {
-                    debug!(
-                        "Face processing: {} processed, {} skipped ({:.1}% skip rate)",
-                        stats.total_faces_processed,
-                        stats.total_faces_skipped,
-                        (stats.total_faces_skipped as f32
-                            / (stats.total_faces_processed + stats.total_faces_skipped) as f32)
-                            * 100.0
-                    );
-                }
-            }
-        }
-    }
-}
+// update_cache_stats has been replaced by log_cache_stats from async_cache module
 
 /// Event for loading progress updates
 #[allow(dead_code)]

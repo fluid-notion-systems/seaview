@@ -3601,6 +3601,7 @@ dependencies = [
  "bevy_brp_extras",
  "byteorder",
  "clap",
+ "crossbeam-channel",
  "env_logger",
  "log",
  "rayon",
