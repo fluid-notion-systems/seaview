@@ -49,6 +49,7 @@ fn main() {
         .add_plugins(RenderingDiagnosticsPlugin)
         .add_plugins(systems::parallel_loader::AsyncStlLoaderPlugin)
         .add_plugins(StlLoaderPlugin)
+        .add_plugins(systems::gltf_loader::GltfLoaderPlugin)
         .add_plugins(SequencePlugin)
         .add_plugins(UIPlugin)
         .add_plugins(BrpExtrasPlugin)
@@ -127,8 +128,18 @@ fn handle_input_path(
                 source_orientation: *source_orientation,
             });
         } else if path.is_file() {
-            // It's a single file - STL loader will handle it
-            info!("Loading single STL file: {:?}", path);
+            // It's a single file - loader will handle it based on extension
+            let ext = path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|s| s.to_lowercase())
+                .unwrap_or_default();
+
+            match ext.as_str() {
+                "stl" => info!("Loading single STL file: {:?}", path),
+                "gltf" | "glb" => info!("Loading single glTF/GLB file: {:?}", path),
+                _ => info!("Loading file (unknown format, will try STL): {:?}", path),
+            }
         } else {
             error!("Path does not exist: {:?}", path);
         }

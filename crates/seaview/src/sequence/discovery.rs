@@ -35,13 +35,27 @@ impl Default for SequencePatterns {
     fn default() -> Self {
         Self {
             patterns: vec![
-                // Common simulation output patterns
+                // Common simulation output patterns - STL
                 SequencePattern::new("frame_number", r"^(.+?)[\._-]?(\d{3,6})\.stl$", 2),
                 SequencePattern::new("timestep", r"^(.+?)[\._-]?[Tt](\d+)\.stl$", 2),
                 SequencePattern::new("step", r"^(.+?)[\._-]?[Ss]tep[\._-]?(\d+)\.stl$", 2),
                 SequencePattern::new("time", r"^(.+?)[\._-]?[Tt]ime[\._-]?(\d+)\.stl$", 2),
-                // Generic numbered pattern
+                // Generic numbered pattern - STL
                 SequencePattern::new("numbered", r"^(.+?)(\d{3,})\.stl$", 2),
+                // Common simulation output patterns - glTF
+                SequencePattern::new("frame_number_gltf", r"^(.+?)[\._-]?(\d{3,6})\.gltf$", 2),
+                SequencePattern::new("timestep_gltf", r"^(.+?)[\._-]?[Tt](\d+)\.gltf$", 2),
+                SequencePattern::new("step_gltf", r"^(.+?)[\._-]?[Ss]tep[\._-]?(\d+)\.gltf$", 2),
+                SequencePattern::new("time_gltf", r"^(.+?)[\._-]?[Tt]ime[\._-]?(\d+)\.gltf$", 2),
+                // Generic numbered pattern - glTF
+                SequencePattern::new("numbered_gltf", r"^(.+?)(\d{3,})\.gltf$", 2),
+                // Common simulation output patterns - GLB
+                SequencePattern::new("frame_number_glb", r"^(.+?)[\._-]?(\d{3,6})\.glb$", 2),
+                SequencePattern::new("timestep_glb", r"^(.+?)[\._-]?[Tt](\d+)\.glb$", 2),
+                SequencePattern::new("step_glb", r"^(.+?)[\._-]?[Ss]tep[\._-]?(\d+)\.glb$", 2),
+                SequencePattern::new("time_glb", r"^(.+?)[\._-]?[Tt]ime[\._-]?(\d+)\.glb$", 2),
+                // Generic numbered pattern - GLB
+                SequencePattern::new("numbered_glb", r"^(.+?)(\d{3,})\.glb$", 2),
             ],
         }
     }

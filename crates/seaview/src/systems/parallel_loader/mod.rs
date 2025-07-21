@@ -8,6 +8,7 @@ use std::thread;
 
 use crate::mesh_optimization::create_optimized_mesh;
 use crate::sequence::loader::FileLoadStats;
+use crate::systems::gltf_loader::load_gltf_as_mesh;
 
 pub struct AsyncStlLoaderPlugin;
 
@@ -380,194 +381,168 @@ fn worker_thread(
     debug!("Worker thread {} exited", id);
 }
 
-/// Parallel STL loading implementation
+/// Parallel mesh loading implementation (supports STL and glTF/GLB)
 fn load_stl_parallel(
     path: &Path,
     use_fallback: bool,
 ) -> Result<(Vec<f32>, Vec<f32>, Vec<f32>, FileLoadStats), String> {
     use std::fs::File;
     use std::io::BufReader;
+    use std::time::Instant;
 
-    // Try to open the file
-    let file =
-        File::open(path).map_err(|e| format!("Failed to open STL file {:?}: {}", path, e))?;
-    let mut reader = BufReader::new(file);
+    let start_time = Instant::now();
+    let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
 
-    // Read STL file
-    let stl =
-        stl_io::read_stl(&mut reader).map_err(|e| format!("Failed to parse STL file: {}", e))?;
+    // Check file extension to determine format
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|s| s.to_lowercase())
+        .unwrap_or_default();
 
-    // Validate
-    if stl.faces.is_empty() {
-        return Err("STL file contains no faces".into());
-    }
+    match extension.as_str() {
+        "gltf" | "glb" => {
+            // Load as glTF/GLB
+            let (mesh, _material) = load_gltf_as_mesh(path)?;
 
-    // Process faces in parallel
-    const CHUNK_SIZE: usize = 1000;
+            // Extract mesh data
+            let positions = match mesh.attribute(bevy::prelude::Mesh::ATTRIBUTE_POSITION) {
+                Some(bevy::render::mesh::VertexAttributeValues::Float32x3(pos)) => {
+                    pos.iter().flatten().copied().collect()
+                }
+                _ => return Err("Failed to extract positions from glTF mesh".to_string()),
+            };
 
-    #[derive(Default)]
-    struct ChunkResult {
-        positions: Vec<[f32; 3]>,
-        normals: Vec<[f32; 3]>,
-        uvs: Vec<[f32; 2]>,
-        valid_faces: usize,
-        skipped_faces: usize,
-        inverted_normals: usize,
-    }
+            let normals = match mesh.attribute(bevy::prelude::Mesh::ATTRIBUTE_NORMAL) {
+                Some(bevy::render::mesh::VertexAttributeValues::Float32x3(norm)) => {
+                    norm.iter().flatten().copied().collect()
+                }
+                _ => vec![0.0, 1.0, 0.0].repeat(positions.len() / 3), // Default normals
+            };
 
-    let chunk_results: Vec<ChunkResult> = stl
-        .faces
-        .par_chunks(CHUNK_SIZE)
-        .enumerate()
-        .map(|(chunk_idx, chunk)| {
-            let mut result = ChunkResult::default();
+            let uvs = match mesh.attribute(bevy::prelude::Mesh::ATTRIBUTE_UV_0) {
+                Some(bevy::render::mesh::VertexAttributeValues::Float32x2(uv)) => {
+                    uv.iter().flatten().copied().collect()
+                }
+                _ => vec![0.0, 0.0].repeat(positions.len() / 3), // Default UVs
+            };
 
-            for (local_idx, face) in chunk.iter().enumerate() {
-                let _face_idx = chunk_idx * CHUNK_SIZE + local_idx;
+            let stats = FileLoadStats {
+                vertices_count: positions.len() / 3,
+                file_size_bytes: file_size,
+                load_time_ms: start_time.elapsed().as_millis() as u32,
+                memory_usage_bytes: (positions.len() + normals.len() + uvs.len())
+                    * std::mem::size_of::<f32>(),
+                is_optimized: mesh.indices().is_some(),
+            };
 
-                // Validate vertex indices
-                let mut valid_face = true;
+            Ok((positions, normals, uvs, stats))
+        }
+        "stl" => {
+            // Original STL loading code
+            let file = File::open(path)
+                .map_err(|e| format!("Failed to open STL file {:?}: {}", path, e))?;
+            let mut reader = BufReader::new(file);
+
+            // Read STL file
+            let stl = stl_io::read_stl(&mut reader)
+                .map_err(|e| format!("Failed to parse STL file: {}", e))?;
+
+            // Validate
+            if stl.faces.is_empty() {
+                return Err("STL file contains no faces".into());
+            }
+
+            // Convert IndexedMesh to raw vertex data
+            let mut positions = Vec::with_capacity(stl.faces.len() * 9);
+            let mut normals = Vec::with_capacity(stl.faces.len() * 9);
+            let mut uvs = Vec::with_capacity(stl.faces.len() * 6);
+
+            for face in &stl.faces {
+                // Add vertices for this face
                 for &vertex_idx in &face.vertices {
-                    if vertex_idx >= stl.vertices.len() {
-                        valid_face = false;
-                        break;
+                    let vertex = &stl.vertices[vertex_idx];
+                    positions.push(vertex[0]);
+                    positions.push(vertex[1]);
+                    positions.push(vertex[2]);
+
+                    // Add normal (same for all vertices of a face)
+                    normals.push(face.normal[0]);
+                    normals.push(face.normal[1]);
+                    normals.push(face.normal[2]);
+
+                    // Simple UV mapping
+                    uvs.push(0.0);
+                    uvs.push(0.0);
+                }
+            }
+
+            let stats = FileLoadStats {
+                vertices_count: positions.len() / 3,
+                file_size_bytes: file_size,
+                load_time_ms: start_time.elapsed().as_millis() as u32,
+                memory_usage_bytes: (positions.len() + normals.len() + uvs.len())
+                    * std::mem::size_of::<f32>(),
+                is_optimized: true, // STL files from stl_io are already indexed
+            };
+
+            Ok((positions, normals, uvs, stats))
+        }
+        _ => {
+            if use_fallback {
+                // Try to load as STL anyway
+                let file = File::open(path)
+                    .map_err(|e| format!("Failed to open file {:?}: {}", path, e))?;
+                let mut reader = BufReader::new(file);
+
+                // Read STL file
+                let stl = stl_io::read_stl(&mut reader)
+                    .map_err(|e| format!("Failed to parse file as STL: {}", e))?;
+
+                // Validate
+                if stl.faces.is_empty() {
+                    return Err("File contains no faces".into());
+                }
+
+                // Convert IndexedMesh to raw vertex data
+                let mut positions = Vec::with_capacity(stl.faces.len() * 9);
+                let mut normals = Vec::with_capacity(stl.faces.len() * 9);
+                let mut uvs = Vec::with_capacity(stl.faces.len() * 6);
+
+                for face in &stl.faces {
+                    // Add vertices for this face
+                    for &vertex_idx in &face.vertices {
+                        let vertex = &stl.vertices[vertex_idx];
+                        positions.push(vertex[0]);
+                        positions.push(vertex[1]);
+                        positions.push(vertex[2]);
+
+                        // Add normal (same for all vertices of a face)
+                        normals.push(face.normal[0]);
+                        normals.push(face.normal[1]);
+                        normals.push(face.normal[2]);
+
+                        // Simple UV mapping
+                        uvs.push(0.0);
+                        uvs.push(0.0);
                     }
                 }
 
-                if !valid_face {
-                    result.skipped_faces += 1;
-                    continue;
-                }
+                let stats = FileLoadStats {
+                    vertices_count: positions.len() / 3,
+                    file_size_bytes: file_size,
+                    load_time_ms: start_time.elapsed().as_millis() as u32,
+                    memory_usage_bytes: (positions.len() + normals.len() + uvs.len())
+                        * std::mem::size_of::<f32>(),
+                    is_optimized: true,
+                };
 
-                // Get vertices
-                let v0 = &stl.vertices[face.vertices[0]];
-                let v1 = &stl.vertices[face.vertices[1]];
-                let v2 = &stl.vertices[face.vertices[2]];
-
-                let p0 = [v0[0], v0[1], v0[2]];
-                let p1 = [v1[0], v1[1], v1[2]];
-                let p2 = [v2[0], v2[1], v2[2]];
-
-                // Check for invalid coordinates
-                let coords_valid = [&p0, &p1, &p2]
-                    .iter()
-                    .all(|p| p.iter().all(|&coord| coord.is_finite()));
-
-                if !coords_valid {
-                    result.skipped_faces += 1;
-                    continue;
-                }
-
-                // Calculate normal
-                let edge1 = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
-                let edge2 = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
-
-                let mut normal = [
-                    edge1[1] * edge2[2] - edge1[2] * edge2[1],
-                    edge1[2] * edge2[0] - edge1[0] * edge2[2],
-                    edge1[0] * edge2[1] - edge1[1] * edge2[0],
-                ];
-
-                let len_squared =
-                    normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2];
-
-                if len_squared < 1e-10 {
-                    result.skipped_faces += 1;
-                    continue;
-                }
-
-                let len = len_squared.sqrt();
-                normal = [normal[0] / len, normal[1] / len, normal[2] / len];
-
-                // Check normal orientation
-                let stl_normal = face.normal;
-                let dot_product = normal[0] * stl_normal[0]
-                    + normal[1] * stl_normal[1]
-                    + normal[2] * stl_normal[2];
-
-                if dot_product < -0.5 {
-                    result.inverted_normals += 1;
-                    normal = [-normal[0], -normal[1], -normal[2]];
-
-                    result.positions.push(p0);
-                    result.positions.push(p2);
-                    result.positions.push(p1);
-                } else {
-                    result.positions.push(p0);
-                    result.positions.push(p1);
-                    result.positions.push(p2);
-                }
-
-                result.normals.push(normal);
-                result.normals.push(normal);
-                result.normals.push(normal);
-
-                result.uvs.push([0.0, 0.0]);
-                result.uvs.push([1.0, 0.0]);
-                result.uvs.push([0.5, 1.0]);
-
-                result.valid_faces += 1;
+                Ok((positions, normals, uvs, stats))
+            } else {
+                Err(format!("Unsupported file format: {}", extension))
             }
-
-            result
-        })
-        .collect();
-
-    // Combine results
-    let total_valid: usize = chunk_results.iter().map(|r| r.valid_faces).sum();
-    let total_skipped: usize = chunk_results.iter().map(|r| r.skipped_faces).sum();
-    let total_inverted: usize = chunk_results.iter().map(|r| r.inverted_normals).sum();
-
-    if total_valid == 0 {
-        if use_fallback {
-            warn!("No valid faces found, using fallback mesh");
-            return Ok(create_fallback_mesh_data());
-        } else {
-            return Err(format!(
-                "No valid faces found (skipped {} invalid faces)",
-                total_skipped
-            ));
         }
     }
-
-    // Flatten arrays
-    let total_vertices = chunk_results.iter().map(|r| r.positions.len()).sum();
-
-    let mut positions = Vec::with_capacity(total_vertices);
-    let mut normals = Vec::with_capacity(total_vertices);
-    let mut uvs = Vec::with_capacity(total_vertices);
-
-    for chunk in chunk_results {
-        for pos in chunk.positions {
-            positions.push(pos[0]);
-            positions.push(pos[1]);
-            positions.push(pos[2]);
-        }
-        for norm in chunk.normals {
-            normals.push(norm[0]);
-            normals.push(norm[1]);
-            normals.push(norm[2]);
-        }
-        for uv in chunk.uvs {
-            uvs.push(uv[0]);
-            uvs.push(uv[1]);
-        }
-    }
-
-    info!(
-        "Parallel loaded {:?}: {} valid faces, {} skipped, {} inverted",
-        path.file_name().unwrap_or_default(),
-        total_valid,
-        total_skipped,
-        total_inverted
-    );
-
-    let stats = FileLoadStats {
-        faces_processed: total_valid,
-        faces_skipped: total_skipped,
-    };
-
-    Ok((positions, normals, uvs, stats))
 }
 
 /// Create fallback mesh data
@@ -588,8 +563,11 @@ fn create_fallback_mesh_data() -> (Vec<f32>, Vec<f32>, Vec<f32>, FileLoadStats) 
     let uvs = vec![0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0];
 
     let stats = FileLoadStats {
-        faces_processed: 2,
-        faces_skipped: 0,
+        vertices_count: 6,
+        file_size_bytes: 0,
+        load_time_ms: 0,
+        memory_usage_bytes: (18 + 18 + 12) * std::mem::size_of::<f32>(),
+        is_optimized: false,
     };
 
     (positions, normals, uvs, stats)

@@ -44,6 +44,34 @@ To test with the provided example sequences (e.g., right-hander):
 cargo run --release --bin seaview -- assets/test_sequences/right-hander/ --source-coordinates zup
 ```
 
+### Mesh Conversion Tools
+
+Seaview includes several tools for optimizing and converting mesh data:
+
+#### STL to glTF/GLB Converter
+Convert STL files to the more efficient glTF format:
+
+```bash
+# Convert a single file
+cargo run --release --bin stl_to_gltf -- input.stl
+
+# Convert a directory of STL files
+cargo run --release --bin stl_to_gltf -- /path/to/stl/directory -o /path/to/output
+```
+
+#### Mesh Receiver Service
+Network service for receiving triangle mesh data:
+
+```bash
+# Start the mesh receiver service
+cargo run --release --bin mesh_receiver_service -- -p 9876 -o ./output
+
+# Test with the mesh sender
+cargo run --release --bin mesh_sender_test -- -n 10 -a
+```
+
+See [docs/mesh-conversion-tools.md](docs/mesh-conversion-tools.md) for detailed documentation.
+
 ## Project Structure
 
 ```
