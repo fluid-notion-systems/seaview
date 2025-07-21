@@ -15,6 +15,10 @@ pub struct Args {
     /// Source coordinate system (yup, zup, fluidx3d)
     #[arg(long, default_value = "yup")]
     pub source_coordinates: String,
+
+    /// Enable network mesh receiving on the specified port
+    #[arg(long, short = 'n')]
+    pub network_port: Option<u16>,
 }
 
 impl Args {

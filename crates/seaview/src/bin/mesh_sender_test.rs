@@ -100,8 +100,8 @@ fn generate_test_mesh(triangles: u32, frame: u32, animate: bool) -> Vec<f32> {
             let face_idx = i % faces.len();
             let face = &faces[face_idx];
 
-            // Scale factor for variety
-            let scale = 10.0 + (i as f32) * 0.5;
+            // Use constant scale for all triangles
+            let scale = 10.0;
 
             for &vert_idx in face {
                 let v = &cube_verts[vert_idx];

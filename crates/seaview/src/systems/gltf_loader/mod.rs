@@ -3,73 +3,19 @@ use crate::systems::parallel_loader::{AsyncStlLoader, LoadPriority};
 use bevy::prelude::*;
 use bevy::render::mesh::{Indices, VertexAttributeValues};
 use bevy::render::render_asset::RenderAssetUsages;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub struct GltfLoaderPlugin;
 
 impl Plugin for GltfLoaderPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Update, process_gltf_loads);
-    }
-}
-
-/// System to process completed glTF/GLB file loads
-fn process_gltf_loads(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut events: EventReader<crate::systems::parallel_loader::LoadCompleteEvent>,
-    mut mesh_cache: ResMut<AsyncMeshCache>,
-    source_orientation: Res<crate::coordinates::SourceOrientation>,
-    asset_server: Res<AssetServer>,
-) {
-    for event in events.read() {
-        if !event.success {
-            continue;
-        }
-
-        // Check if this is a glTF/GLB file
-        let path_str = event.path.to_string_lossy().to_lowercase();
-        if !path_str.ends_with(".gltf") && !path_str.ends_with(".glb") {
-            continue;
-        }
-
-        info!("Processing glTF/GLB file: {:?}", event.path);
-
-        // Load glTF as a scene
-        let scene_handle: Handle<Scene> = asset_server.load(event.path.clone());
-
-        // For now, we'll spawn the scene directly
-        // In a more sophisticated implementation, we might extract the mesh data
-        let entity = commands
-            .spawn((
-                SceneBundle {
-                    scene: scene_handle,
-                    transform: source_orientation.as_ref().to_transform(),
-                    ..default()
-                },
-                Name::new(format!(
-                    "glTF Model: {}",
-                    event.path.file_name().unwrap_or_default().to_string_lossy()
-                )),
-            ))
-            .id();
-
-        // Track the entity in mesh cache
-        if mesh_cache.current_mesh_entity.is_some() {
-            // Remove previous entity if exists
-            if let Some(old_entity) = mesh_cache.current_mesh_entity {
-                commands.entity(old_entity).despawn_recursive();
-            }
-        }
-        mesh_cache.current_mesh_entity = Some(entity);
+    fn build(&self, _app: &mut App) {
+        // For now, glTF loading is handled through the parallel loader
+        // which converts glTF to mesh data
     }
 }
 
 /// Load a glTF/GLB file directly (synchronous alternative for simple cases)
 pub fn load_gltf_as_mesh(path: &Path) -> Result<(Mesh, Option<StandardMaterial>), String> {
-    use gltf::Semantic;
-
     let (document, buffers, _images) =
         gltf::import(path).map_err(|e| format!("Failed to import glTF: {}", e))?;
 
@@ -125,16 +71,18 @@ pub fn load_gltf_as_mesh(path: &Path) -> Result<(Mesh, Option<StandardMaterial>)
     }
 
     // Extract material
-    let material = if let Some(gltf_material) = primitive.material() {
-        let pbr = gltf_material.pbr_metallic_roughness();
+    let gltf_material = primitive.material();
+    let material = if let Some(_gltf_material) = gltf_material.index() {
+        let material_ref = primitive.material();
+        let pbr = material_ref.pbr_metallic_roughness();
         let base_color = pbr.base_color_factor();
 
         Some(StandardMaterial {
             base_color: Color::srgba(base_color[0], base_color[1], base_color[2], base_color[3]),
             metallic: pbr.metallic_factor(),
             perceptual_roughness: pbr.roughness_factor(),
-            double_sided: gltf_material.double_sided(),
-            cull_mode: if gltf_material.double_sided() {
+            double_sided: material_ref.double_sided(),
+            cull_mode: if material_ref.double_sided() {
                 None
             } else {
                 Some(bevy::render::render_resource::Face::Back)
@@ -167,7 +115,7 @@ pub fn queue_gltf_load(
 ) {
     if is_gltf_file(path) {
         info!("Queueing glTF/GLB file for loading: {:?}", path);
-        mesh_cache.get_or_queue(path, async_loader, priority, true);
+        mesh_cache.get_or_queue(&path.to_path_buf(), async_loader, priority, true);
     }
 }
 

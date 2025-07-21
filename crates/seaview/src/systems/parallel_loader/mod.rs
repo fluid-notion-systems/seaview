@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
-use rayon::prelude::*;
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -388,10 +387,6 @@ fn load_stl_parallel(
 ) -> Result<(Vec<f32>, Vec<f32>, Vec<f32>, FileLoadStats), String> {
     use std::fs::File;
     use std::io::BufReader;
-    use std::time::Instant;
-
-    let start_time = Instant::now();
-    let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
 
     // Check file extension to determine format
     let extension = path
@@ -406,14 +401,15 @@ fn load_stl_parallel(
             let (mesh, _material) = load_gltf_as_mesh(path)?;
 
             // Extract mesh data
-            let positions = match mesh.attribute(bevy::prelude::Mesh::ATTRIBUTE_POSITION) {
+            let positions: Vec<f32> = match mesh.attribute(bevy::prelude::Mesh::ATTRIBUTE_POSITION)
+            {
                 Some(bevy::render::mesh::VertexAttributeValues::Float32x3(pos)) => {
                     pos.iter().flatten().copied().collect()
                 }
                 _ => return Err("Failed to extract positions from glTF mesh".to_string()),
             };
 
-            let normals = match mesh.attribute(bevy::prelude::Mesh::ATTRIBUTE_NORMAL) {
+            let normals: Vec<f32> = match mesh.attribute(bevy::prelude::Mesh::ATTRIBUTE_NORMAL) {
                 Some(bevy::render::mesh::VertexAttributeValues::Float32x3(norm)) => {
                     norm.iter().flatten().copied().collect()
                 }
@@ -428,12 +424,8 @@ fn load_stl_parallel(
             };
 
             let stats = FileLoadStats {
-                vertices_count: positions.len() / 3,
-                file_size_bytes: file_size,
-                load_time_ms: start_time.elapsed().as_millis() as u32,
-                memory_usage_bytes: (positions.len() + normals.len() + uvs.len())
-                    * std::mem::size_of::<f32>(),
-                is_optimized: mesh.indices().is_some(),
+                faces_processed: positions.len() / 9, // 9 floats per triangle (3 vertices * 3 coords)
+                faces_skipped: 0,
             };
 
             Ok((positions, normals, uvs, stats))
@@ -478,12 +470,8 @@ fn load_stl_parallel(
             }
 
             let stats = FileLoadStats {
-                vertices_count: positions.len() / 3,
-                file_size_bytes: file_size,
-                load_time_ms: start_time.elapsed().as_millis() as u32,
-                memory_usage_bytes: (positions.len() + normals.len() + uvs.len())
-                    * std::mem::size_of::<f32>(),
-                is_optimized: true, // STL files from stl_io are already indexed
+                faces_processed: stl.faces.len(),
+                faces_skipped: 0,
             };
 
             Ok((positions, normals, uvs, stats))
@@ -529,12 +517,8 @@ fn load_stl_parallel(
                 }
 
                 let stats = FileLoadStats {
-                    vertices_count: positions.len() / 3,
-                    file_size_bytes: file_size,
-                    load_time_ms: start_time.elapsed().as_millis() as u32,
-                    memory_usage_bytes: (positions.len() + normals.len() + uvs.len())
-                        * std::mem::size_of::<f32>(),
-                    is_optimized: true,
+                    faces_processed: stl.faces.len(),
+                    faces_skipped: 0,
                 };
 
                 Ok((positions, normals, uvs, stats))
@@ -563,11 +547,8 @@ fn create_fallback_mesh_data() -> (Vec<f32>, Vec<f32>, Vec<f32>, FileLoadStats) 
     let uvs = vec![0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0];
 
     let stats = FileLoadStats {
-        vertices_count: 6,
-        file_size_bytes: 0,
-        load_time_ms: 0,
-        memory_usage_bytes: (18 + 18 + 12) * std::mem::size_of::<f32>(),
-        is_optimized: false,
+        faces_processed: 2,
+        faces_skipped: 0,
     };
 
     (positions, normals, uvs, stats)

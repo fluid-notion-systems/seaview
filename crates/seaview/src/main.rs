@@ -5,6 +5,7 @@ use bevy_brp_extras::BrpExtrasPlugin;
 mod cli;
 mod coordinates;
 mod mesh_optimization;
+mod network;
 mod sequence;
 mod systems;
 mod ui;
@@ -14,6 +15,7 @@ use coordinates::SourceOrientation;
 use sequence::{discovery::DiscoverSequenceRequest, SequencePlugin};
 use systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
 use systems::diagnostics::RenderingDiagnosticsPlugin;
+use systems::network::{NetworkConfig, NetworkMeshPlugin};
 use systems::stl_loader::{StlFilePath, StlLoaderPlugin};
 use ui::UIPlugin;
 
@@ -42,6 +44,24 @@ fn main() {
         }
     };
 
+    // Configure network receiving
+    let network_config = if args.network_port.is_some() {
+        NetworkConfig {
+            enabled: true,
+            port: args.network_port.unwrap_or(9877),
+            max_message_size_mb: 100,
+        }
+    } else {
+        NetworkConfig::default()
+    };
+
+    if network_config.enabled {
+        info!(
+            "Network mesh receiving enabled on port {}",
+            network_config.port
+        );
+    }
+
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
@@ -52,9 +72,11 @@ fn main() {
         .add_plugins(systems::gltf_loader::GltfLoaderPlugin)
         .add_plugins(SequencePlugin)
         .add_plugins(UIPlugin)
+        .add_plugins(NetworkMeshPlugin)
         .add_plugins(BrpExtrasPlugin)
         .insert_resource(StlFilePath(args.path.clone()))
         .insert_resource(source_orientation)
+        .insert_resource(network_config)
         .add_systems(Startup, (setup, handle_input_path))
         .add_systems(Update, (camera_controller, cursor_grab_system))
         .run();
