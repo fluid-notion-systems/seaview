@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
+use crate::mesh_optimization::create_optimized_mesh;
 use crate::sequence::loader::FileLoadStats;
 
 pub struct AsyncStlLoaderPlugin;
@@ -274,15 +275,6 @@ impl AsyncStlLoader {
         while let Some(worker) = self.workers.pop() {
             let _ = worker.join();
         }
-    }
-
-    let total_duration = process_start.elapsed();
-    if total_duration.as_millis() > 50 && !completed.is_empty() {
-        warn!(
-            "Slow load processing: {:.2}s for {} completed loads",
-            total_duration.as_secs_f32(),
-            completed.len()
-        );
     }
 }
 
@@ -621,13 +613,7 @@ fn process_completed_loads(
     for (handle, result) in loader.poll_completed() {
         match result.result {
             Ok((positions, normals, uvs, stats)) => {
-                // Create mesh
-                let mut mesh = Mesh::new(
-                    bevy::render::mesh::PrimitiveTopology::TriangleList,
-                    bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD,
-                );
-
-                // Reshape flat arrays into Vec3/Vec2
+                // Reshape flat arrays into proper format
                 let positions: Vec<[f32; 3]> = positions
                     .chunks_exact(3)
                     .map(|c| [c[0], c[1], c[2]])
@@ -640,9 +626,24 @@ fn process_completed_loads(
 
                 let uvs: Vec<[f32; 2]> = uvs.chunks_exact(2).map(|c| [c[0], c[1]]).collect();
 
-                mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-                mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-                mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+                // Create optimized mesh
+                let mesh =
+                    match create_optimized_mesh(positions.clone(), normals.clone(), uvs.clone()) {
+                        Ok(mesh) => mesh,
+                        Err(e) => {
+                            error!("Failed to create optimized mesh: {}", e);
+                            // Fallback to unoptimized mesh
+                            let mut mesh = Mesh::new(
+                                bevy::render::mesh::PrimitiveTopology::TriangleList,
+                                bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD
+                                    | bevy::render::render_asset::RenderAssetUsages::MAIN_WORLD,
+                            );
+                            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+                            mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+                            mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+                            mesh
+                        }
+                    };
 
                 let mesh_handle = meshes.add(mesh);
 

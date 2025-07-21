@@ -15,6 +15,10 @@ byteorder = "1.4"
 log = "0.4"
 env_logger = "0.10"
 crossbeam-channel = "0.5"
+meshopt = "0.3"
+thiserror = "1.0"
+glob = "0.3"
+gltf = { version = "1.4", features = ["import"] }
 
 [dev-dependencies]
 tempfile = "3.8"
@@ -22,3 +26,27 @@ tempfile = "3.8"
 [[example]]
 name = "async_loading_demo"
 path = "../../examples/async_loading_demo.rs"
+
+[[example]]
+name = "debug_mesh_rendering"
+path = "../../examples/debug_mesh_rendering.rs"
+
+[[example]]
+name = "mesh_asset_test"
+path = "../../examples/mesh_asset_test.rs"
+
+[[example]]
+name = "mesh_handle_test"
+path = "../../examples/mesh_handle_test.rs"
+
+[[example]]
+name = "render_asset_usage_test"
+path = "../../examples/render_asset_usage_test.rs"
+
+[[bin]]
+name = "optimize_stl_sequence"
+path = "src/bin/optimize_stl_sequence.rs"
+
+[[bin]]
+name = "stl_to_gltf"
+path = "src/bin/stl_to_gltf.rs"

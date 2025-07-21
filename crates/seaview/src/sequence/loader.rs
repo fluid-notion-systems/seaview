@@ -264,16 +264,15 @@ fn handle_frame_changes(
 
         // Check if mesh is already cached
         if let Some(mesh_handle) = mesh_cache.cache.get(path).cloned() {
-            // Remove old mesh entity
-            if let Some(entity) = mesh_cache.current_mesh_entity {
-                info!("Despawning old mesh entity: {:?}", entity);
-                commands.entity(entity).despawn();
+            // Despawn the old mesh entity if it exists
+            if let Some(old_entity) = mesh_cache.current_mesh_entity {
+                commands.entity(old_entity).despawn();
+                debug!("Despawned old mesh entity: {:?}", old_entity);
             }
 
-            // Get material
+            // Mesh is already loaded, spawn it
             let material_handle = mesh_cache.get_material(&mut materials);
 
-            // Spawn new mesh entity
             let transform = if let Some(sequence) = &sequence_manager.current_sequence {
                 sequence.source_orientation.to_transform()
             } else {
@@ -617,7 +616,8 @@ pub fn create_fallback_mesh() -> Mesh {
 
     let mut mesh = Mesh::new(
         bevy::render::mesh::PrimitiveTopology::TriangleList,
-        bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD,
+        bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD
+            | bevy::render::render_asset::RenderAssetUsages::MAIN_WORLD,
     );
 
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);

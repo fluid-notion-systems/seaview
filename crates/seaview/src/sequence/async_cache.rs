@@ -148,15 +148,6 @@ impl AsyncMeshCache {
                 self.access_order.remove(0);
             }
         }
-
-        let total_time = process_start.elapsed();
-        if total_time.as_millis() > 50 && !completed.is_empty() {
-            warn!(
-                "Slow cache processing: {:.2}ms for {} completed loads",
-                total_time.as_secs_f32() * 1000.0,
-                completed.len()
-            );
-        }
     }
 
     /// Insert a loaded mesh into the cache

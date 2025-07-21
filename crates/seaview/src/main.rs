@@ -4,6 +4,7 @@ use bevy_brp_extras::BrpExtrasPlugin;
 
 mod cli;
 mod coordinates;
+mod mesh_optimization;
 mod sequence;
 mod systems;
 mod ui;
@@ -12,6 +13,7 @@ use cli::Args;
 use coordinates::SourceOrientation;
 use sequence::{discovery::DiscoverSequenceRequest, SequencePlugin};
 use systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
+use systems::diagnostics::RenderingDiagnosticsPlugin;
 use systems::stl_loader::{StlFilePath, StlLoaderPlugin};
 use ui::UIPlugin;
 
@@ -44,6 +46,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(LogDiagnosticsPlugin::default())
+        .add_plugins(RenderingDiagnosticsPlugin)
         .add_plugins(systems::parallel_loader::AsyncStlLoaderPlugin)
         .add_plugins(StlLoaderPlugin)
         .add_plugins(SequencePlugin)

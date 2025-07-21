@@ -36,6 +36,14 @@ cargo build --release
 cargo run --release
 ```
 
+### Testing with Example Sequences
+
+To test with the provided example sequences (e.g., right-hander):
+
+```bash
+cargo run --release --bin seaview -- assets/test_sequences/right-hander/ --source-coordinates zup
+```
+
 ## Project Structure
 
 ```
