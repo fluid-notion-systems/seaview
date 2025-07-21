@@ -1,3 +1,4 @@
+use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
 
@@ -41,6 +42,8 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(FrameTimeDiagnosticsPlugin::default())
+        .add_plugins(LogDiagnosticsPlugin::default())
         .add_plugins(systems::parallel_loader::AsyncStlLoaderPlugin)
         .add_plugins(StlLoaderPlugin)
         .add_plugins(SequencePlugin)

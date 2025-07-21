@@ -275,6 +275,15 @@ impl AsyncStlLoader {
             let _ = worker.join();
         }
     }
+
+    let total_duration = process_start.elapsed();
+    if total_duration.as_millis() > 50 && !completed.is_empty() {
+        warn!(
+            "Slow load processing: {:.2}s for {} completed loads",
+            total_duration.as_secs_f32(),
+            completed.len()
+        );
+    }
 }
 
 impl Drop for AsyncStlLoader {

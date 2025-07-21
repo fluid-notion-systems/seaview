@@ -1,6 +1,7 @@
 //! UI module for the Seaview application
 
 use crate::sequence::{LoadingState, SequenceEvent, SequenceManager};
+use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
 
 /// Plugin for UI functionality
@@ -14,6 +15,7 @@ impl Plugin for UIPlugin {
                 update_status_text,
                 update_loading_ui,
                 handle_sequence_events,
+                update_fps_counter,
             ),
         );
     }
@@ -42,6 +44,10 @@ struct LoadingBarProgress;
 /// Marker component for loading text
 #[derive(Component)]
 struct LoadingText;
+
+/// Marker component for FPS counter
+#[derive(Component)]
+struct FpsText;
 
 /// Setup the UI layout
 fn setup_ui(mut commands: Commands) {
@@ -140,6 +146,24 @@ fn setup_ui(mut commands: Commands) {
                 LoadingText,
             ));
         });
+
+    // Create FPS counter
+    commands.spawn((
+        Text::new("FPS: "),
+        TextFont {
+            font_size: 16.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.0, 1.0, 0.0)),
+        TextLayout::new_with_justify(JustifyText::Right),
+        Node {
+            position_type: PositionType::Absolute,
+            right: Val::Px(10.0),
+            top: Val::Px(10.0),
+            ..default()
+        },
+        FpsText,
+    ));
 }
 
 /// Update status text based on sequence state
@@ -232,6 +256,20 @@ fn handle_sequence_events(mut events: EventReader<SequenceEvent>) {
                 error!("UI: Error - {}", msg);
             }
             _ => {}
+        }
+    }
+}
+
+/// Update FPS counter
+fn update_fps_counter(
+    diagnostics: Res<DiagnosticsStore>,
+    mut query: Query<&mut Text, With<FpsText>>,
+) {
+    for mut text in query.iter_mut() {
+        if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
+            if let Some(value) = fps.smoothed() {
+                text.0 = format!("FPS: {:.0}", value);
+            }
         }
     }
 }
