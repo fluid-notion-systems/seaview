@@ -321,7 +321,7 @@ also, use thiserror, and tracing for verbose logging, (using info, debug)
 - [x] Create basic tests
 
 ### Phase 2: Add FFI Layer (Days 3-4)
-- [ ] Design minimal C API surface
+- [x] Design minimal C API surface
 - [ ] Implement FFI functions
 - [ ] Generate C headers with cbindgen
 - [ ] Create C++ example
@@ -408,6 +408,214 @@ also, use thiserror, and tracing for verbose logging, (using info, debug)
 3. Add FFI layer incrementally
 4. Test with mock C++ application
 5. Integrate with FluidX3d
+
+## Debugging: Sequence Handling Issue
+
+### Problem Description
+
+Meshes sent through the network are not getting their own frame - they're being added to the world and rendered over each other. This suggests the frame sequencing/replacement logic is not working correctly.
+
+### Root Cause Analysis
+
+The issue likely stems from one of these areas:
+
+1. **Frame Number Not Being Used**
+   - The `frame_number` field in `MeshFrame` might not be propagated to the rendering system
+   - Need to ensure seaview uses frame numbers to replace previous meshes
+
+2. **Missing Entity Management**
+   - Each frame should replace the previous mesh entity
+   - Currently might be creating new entities without removing old ones
+
+3. **Simulation ID Not Used for Grouping**
+   - Multiple simulations could be mixed together
+   - Need simulation_id → entity mapping
+
+### Required Changes
+
+#### 1. Add Frame Management to Protocol
+
+```rust
+// src/types.rs - Enhanced message types
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum MeshUpdate {
+    /// Replace all meshes for this simulation_id
+    FullFrame {
+        simulation_id: String,
+        frame_number: u32,
+        meshes: Vec<MeshData>,
+    },
+    /// Append mesh to current frame
+    Append {
+        simulation_id: String,
+        frame_number: u32,
+        mesh: MeshData,
+    },
+    /// Clear all meshes for simulation
+    Clear {
+        simulation_id: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MeshData {
+    pub mesh_id: String,  // Unique ID within frame
+    pub vertices: Vec<f32>,
+    pub normals: Option<Vec<f32>>,
+    pub indices: Option<Vec<u32>>,
+}
+```
+
+#### 2. Receiver-Side Frame Management
+
+```rust
+// In seaview receiver
+use bevy::prelude::*;
+use std::collections::HashMap;
+
+#[derive(Resource)]
+pub struct SimulationFrames {
+    /// Maps simulation_id -> current frame data
+    frames: HashMap<String, FrameData>,
+}
+
+pub struct FrameData {
+    frame_number: u32,
+    /// Entity IDs for meshes in this frame
+    entities: Vec<Entity>,
+}
+
+fn handle_mesh_update(
+    mut commands: Commands,
+    mut sim_frames: ResMut<SimulationFrames>,
+    update: MeshUpdate,
+) {
+    match update {
+        MeshUpdate::FullFrame { simulation_id, frame_number, meshes } => {
+            // Remove previous frame entities
+            if let Some(frame_data) = sim_frames.frames.get_mut(&simulation_id) {
+                for entity in &frame_data.entities {
+                    commands.entity(*entity).despawn();
+                }
+                frame_data.entities.clear();
+            }
+
+            // Create new frame
+            let mut entities = Vec::new();
+            for mesh_data in meshes {
+                let entity = spawn_mesh(&mut commands, &mesh_data);
+                entities.push(entity);
+            }
+
+            sim_frames.frames.insert(
+                simulation_id,
+                FrameData {
+                    frame_number,
+                    entities,
+                },
+            );
+        }
+        MeshUpdate::Append { .. } => {
+            // Handle incremental updates
+        }
+        MeshUpdate::Clear { simulation_id } => {
+            // Remove all meshes for simulation
+            if let Some(frame_data) = sim_frames.frames.remove(&simulation_id) {
+                for entity in frame_data.entities {
+                    commands.entity(entity).despawn();
+                }
+            }
+        }
+    }
+}
+```
+
+#### 3. Debugging Helpers
+
+Add debug logging to trace the issue:
+
+```rust
+// src/receiver.rs
+use tracing::{debug, info, warn};
+
+fn process_mesh_frame(frame: MeshFrame) {
+    info!(
+        "Received mesh frame: sim_id={}, frame={}, vertices={}",
+        frame.simulation_id,
+        frame.frame_number,
+        frame.vertices.len() / 3
+    );
+    
+    debug!("Frame bounds: {:?}", frame.domain_bounds);
+    
+    // Add frame counter to verify sequencing
+    static FRAME_COUNTER: AtomicU32 = AtomicU32::new(0);
+    let recv_count = FRAME_COUNTER.fetch_add(1, Ordering::Relaxed);
+    
+    if recv_count > 0 && frame.frame_number <= recv_count {
+        warn!(
+            "Out of order frame? Expected > {}, got {}",
+            recv_count, frame.frame_number
+        );
+    }
+}
+```
+
+### Testing Strategy
+
+1. **Simple Test Case**
+   ```cpp
+   // Send two frames with same simulation_id
+   sender.sendMesh("test-sim", 1, vertices1, normals1);
+   sleep(100ms);
+   sender.sendMesh("test-sim", 2, vertices2, normals2);
+   // Should see only vertices2 rendered
+   ```
+
+2. **Multiple Simulations**
+   ```cpp
+   // Send interleaved frames from different simulations
+   sender.sendMesh("sim-A", 1, verticesA1, normalsA1);
+   sender.sendMesh("sim-B", 1, verticesB1, normalsB1);
+   sender.sendMesh("sim-A", 2, verticesA2, normalsA2);
+   // Should see latest frame from each simulation
+   ```
+
+3. **Verification Points**
+   - Log entity creation/destruction
+   - Count active entities per simulation
+   - Verify frame numbers are monotonic
+   - Check memory usage (no leaks from accumulating entities)
+
+### Quick Fix (Temporary)
+
+If we need a quick workaround before implementing proper frame management:
+
+```rust
+// In seaview - clear all meshes before adding new ones
+fn handle_incoming_mesh(
+    mut commands: Commands,
+    mesh_query: Query<Entity, With<MeshMarker>>,
+    new_mesh: MeshFrame,
+) {
+    // Nuclear option: clear everything
+    for entity in mesh_query.iter() {
+        commands.entity(entity).despawn();
+    }
+    
+    // Add new mesh
+    spawn_mesh_from_frame(&mut commands, new_mesh);
+}
+```
+
+### Integration Checklist
+
+- [ ] Add frame management to seaview-network protocol
+- [ ] Implement entity tracking in seaview receiver
+- [ ] Add debug logging for frame sequences
+- [ ] Test with multiple rapid frames
+- [ ] Verify memory cleanup
+- [ ] Document expected behavior
 
 ---
 
