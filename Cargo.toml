@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/seaview"]
+members = ["crates/seaview", "crates/seaview-network"]
 resolver = "2"
 
 [workspace.package]
