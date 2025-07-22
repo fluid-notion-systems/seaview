@@ -4,7 +4,7 @@ use bevy_brp_extras::BrpExtrasPlugin;
 
 mod cli;
 mod coordinates;
-mod mesh_optimization;
+
 mod network;
 mod sequence;
 mod systems;

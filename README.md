@@ -70,6 +70,23 @@ cargo run --release --bin mesh_receiver_service -- -p 9876 -o ./output
 cargo run --release --bin mesh_sender_test -- -n 10 -a
 ```
 
+#### Network Testing Scripts
+Simple scripts to test the mesh processing pipeline:
+
+```bash
+# Run complete send/receive test
+./scripts/test_network_send_and_receive.sh
+
+# Test seaview's network visualization
+./scripts/test_network_send_and_visualize.sh
+
+# Start receiver manually
+./scripts/run_receiver.sh
+
+# Send test data manually  
+./scripts/send_test_mesh.sh
+```
+
 See [docs/mesh-conversion-tools.md](docs/mesh-conversion-tools.md) for detailed documentation.
 
 ## Project Structure

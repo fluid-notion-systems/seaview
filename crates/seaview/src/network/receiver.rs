@@ -31,6 +31,19 @@ impl From<(MessageHeader, MeshData)> for ReceivedMesh {
     }
 }
 
+impl From<ReceivedMesh> for baby_shark::mesh::Mesh<f32> {
+    fn from(received_mesh: ReceivedMesh) -> Self {
+        baby_shark::mesh::Mesh::from_iter(received_mesh.vertices.into_iter())
+    }
+}
+
+impl From<&ReceivedMesh> for baby_shark::mesh::Mesh<f32> {
+    fn from(received_mesh: &ReceivedMesh) -> Self {
+        //FIXME: I dont like this call to copied(), we'll look into zero-copy later
+        baby_shark::mesh::Mesh::from_iter(received_mesh.vertices.iter().copied())
+    }
+}
+
 /// Mesh receiver that listens for incoming mesh data
 pub struct MeshReceiver {
     listener: TcpListener,

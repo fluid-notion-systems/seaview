@@ -1,11 +1,12 @@
 //! Network system for receiving mesh data in real-time
 
 use bevy::prelude::*;
-use bevy::render::mesh::{Indices, VertexAttributeValues};
-use bevy::render::render_asset::RenderAssetUsages;
+
 use std::sync::{Arc, Mutex};
 
 use crate::network::{NonBlockingMeshReceiver, ReceivedMesh};
+use baby_shark::mesh::Mesh as BabySharkMesh;
+use nalgebra::Vector3;
 
 pub struct NetworkMeshPlugin;
 
@@ -157,84 +158,31 @@ fn poll_network_meshes(
 }
 
 fn convert_to_bevy_mesh(received: &ReceivedMesh) -> Result<Mesh, String> {
-    let mut mesh = Mesh::new(
-        bevy::render::mesh::PrimitiveTopology::TriangleList,
-        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
-    );
-
-    // Extract vertices and calculate normals
-    let mut positions = Vec::new();
-    let mut normals = Vec::new();
-    let mut indices = Vec::new();
+    // Convert flat vertex array to Vector3 array
+    let mut vertices = Vec::with_capacity(received.triangle_count as usize * 3);
+    let mut indices = Vec::with_capacity(received.triangle_count as usize * 3);
 
     // Process each triangle
     for tri_idx in 0..received.triangle_count as usize {
         let base_idx = tri_idx * 9;
 
-        // Get triangle vertices
-        let v0 = [
-            received.vertices[base_idx],
-            received.vertices[base_idx + 1],
-            received.vertices[base_idx + 2],
-        ];
-        let v1 = [
-            received.vertices[base_idx + 3],
-            received.vertices[base_idx + 4],
-            received.vertices[base_idx + 5],
-        ];
-        let v2 = [
-            received.vertices[base_idx + 6],
-            received.vertices[base_idx + 7],
-            received.vertices[base_idx + 8],
-        ];
-
-        // Calculate face normal
-        let edge1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]];
-        let edge2 = [v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]];
-
-        let normal = [
-            edge1[1] * edge2[2] - edge1[2] * edge2[1],
-            edge1[2] * edge2[0] - edge1[0] * edge2[2],
-            edge1[0] * edge2[1] - edge1[1] * edge2[0],
-        ];
-
-        let len = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
-        let normal = if len > 0.0 {
-            [normal[0] / len, normal[1] / len, normal[2] / len]
-        } else {
-            [0.0, 1.0, 0.0]
-        };
-
-        // Add vertices with shared normal
-        let start_idx = positions.len() as u32;
-        positions.push(v0);
-        positions.push(v1);
-        positions.push(v2);
-
-        normals.push(normal);
-        normals.push(normal);
-        normals.push(normal);
-
-        // Add indices
-        indices.push(start_idx);
-        indices.push(start_idx + 1);
-        indices.push(start_idx + 2);
+        // Extract three vertices for this triangle
+        for vertex_offset in 0..3 {
+            let idx = base_idx + vertex_offset * 3;
+            vertices.push(Vector3::new(
+                received.vertices[idx],
+                received.vertices[idx + 1],
+                received.vertices[idx + 2],
+            ));
+            indices.push(vertices.len() - 1);
+        }
     }
 
-    // Create dummy UVs (could be improved later)
-    let uvs = vec![[0.0, 0.0]; positions.len()];
+    // Create baby_shark mesh
+    let baby_shark_mesh = BabySharkMesh::new(vertices, indices);
 
-    // Set mesh attributes
-    mesh.insert_attribute(
-        Mesh::ATTRIBUTE_POSITION,
-        VertexAttributeValues::Float32x3(positions),
-    );
-    mesh.insert_attribute(
-        Mesh::ATTRIBUTE_NORMAL,
-        VertexAttributeValues::Float32x3(normals),
-    );
-    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, VertexAttributeValues::Float32x2(uvs));
-    mesh.insert_indices(Indices::U32(indices));
+    // Convert to Bevy mesh - baby_shark handles normals and UVs automatically
+    let bevy_mesh: Mesh = baby_shark_mesh.into();
 
-    Ok(mesh)
+    Ok(bevy_mesh)
 }

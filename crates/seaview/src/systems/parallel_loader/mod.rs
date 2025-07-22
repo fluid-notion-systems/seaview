@@ -5,9 +5,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use crate::mesh_optimization::create_optimized_mesh;
 use crate::sequence::loader::FileLoadStats;
 use crate::systems::gltf_loader::load_gltf_as_mesh;
+use baby_shark::mesh::Mesh as BabySharkMesh;
 
 pub struct AsyncStlLoaderPlugin;
 
@@ -578,31 +578,18 @@ fn process_completed_loads(
                     .map(|c| [c[0], c[1], c[2]])
                     .collect();
 
-                let normals: Vec<[f32; 3]> = normals
+                let _normals: Vec<[f32; 3]> = normals
                     .chunks_exact(3)
                     .map(|c| [c[0], c[1], c[2]])
                     .collect();
 
-                let uvs: Vec<[f32; 2]> = uvs.chunks_exact(2).map(|c| [c[0], c[1]]).collect();
+                let _uvs: Vec<[f32; 2]> = uvs.chunks_exact(2).map(|c| [c[0], c[1]]).collect();
 
-                // Create optimized mesh
-                let mesh =
-                    match create_optimized_mesh(positions.clone(), normals.clone(), uvs.clone()) {
-                        Ok(mesh) => mesh,
-                        Err(e) => {
-                            error!("Failed to create optimized mesh: {}", e);
-                            // Fallback to unoptimized mesh
-                            let mut mesh = Mesh::new(
-                                bevy::render::mesh::PrimitiveTopology::TriangleList,
-                                bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD
-                                    | bevy::render::render_asset::RenderAssetUsages::MAIN_WORLD,
-                            );
-                            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-                            mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-                            mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-                            mesh
-                        }
-                    };
+                // Use baby_shark for mesh optimization with vertex deduplication
+                let baby_shark_mesh =
+                    BabySharkMesh::from_iter(positions.iter().flat_map(|&[x, y, z]| [x, y, z]));
+                // baby_shark handles normal and UV computation automatically
+                let mesh: Mesh = baby_shark_mesh.into();
 
                 let mesh_handle = meshes.add(mesh);
 

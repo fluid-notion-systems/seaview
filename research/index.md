@@ -31,6 +31,15 @@ Research on implementing multi-format mesh file loading in Bevy, with immediate 
 - Performance considerations
 - **Status**: Research complete, ready for implementation
 
+### [Baby Shark Mesh Conversion Research](./baby_shark_mesh_conversion.md)
+Research on using the baby_shark library for converting polygon soup mesh data to indexed format. Covers:
+
+- Analysis of baby_shark's mesh format types (PolygonSoup vs CornerTable)
+- The merge_points algorithm for vertex deduplication
+- Integration strategy for fixing mesh rendering issues
+- Performance benefits and implementation considerations
+- **Status**: Research complete, implementation in progress
+
 ## Project Status
 
 Currently in **Phase 1: Foundation and Core Infrastructure**

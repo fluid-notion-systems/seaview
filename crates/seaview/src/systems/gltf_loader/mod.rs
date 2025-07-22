@@ -1,8 +1,9 @@
 use crate::sequence::async_cache::AsyncMeshCache;
 use crate::systems::parallel_loader::{AsyncStlLoader, LoadPriority};
+use baby_shark::mesh::Mesh as BabySharkMesh;
 use bevy::prelude::*;
-use bevy::render::mesh::{Indices, VertexAttributeValues};
-use bevy::render::render_asset::RenderAssetUsages;
+use bevy::render::mesh::VertexAttributeValues;
+
 use std::path::Path;
 
 pub struct GltfLoaderPlugin;
@@ -30,26 +31,21 @@ pub fn load_gltf_as_mesh(path: &Path) -> Result<(Mesh, Option<StandardMaterial>)
         .next()
         .ok_or_else(|| "No primitives found in mesh".to_string())?;
 
-    // Create Bevy mesh
-    let mut mesh = Mesh::new(
-        bevy::render::mesh::PrimitiveTopology::TriangleList,
-        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
-    );
-
     // Extract vertex positions
     let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
 
-    if let Some(positions_reader) = reader.read_positions() {
-        let positions: Vec<[f32; 3]> = positions_reader.collect();
-        mesh.insert_attribute(
-            Mesh::ATTRIBUTE_POSITION,
-            VertexAttributeValues::Float32x3(positions),
-        );
+    let positions: Vec<[f32; 3]> = if let Some(positions_reader) = reader.read_positions() {
+        positions_reader.collect()
     } else {
         return Err("No position data found in glTF primitive".to_string());
-    }
+    };
 
-    // Extract normals
+    // Use baby_shark for mesh creation with automatic vertex deduplication
+    let baby_shark_mesh =
+        BabySharkMesh::from_iter(positions.iter().flat_map(|&[x, y, z]| [x, y, z]));
+    let mut mesh: Mesh = baby_shark_mesh.into();
+
+    // Add normals (baby_shark handles positions and indices, we add other attributes)
     if let Some(normals_reader) = reader.read_normals() {
         let normals: Vec<[f32; 3]> = normals_reader.collect();
         mesh.insert_attribute(
@@ -57,18 +53,14 @@ pub fn load_gltf_as_mesh(path: &Path) -> Result<(Mesh, Option<StandardMaterial>)
             VertexAttributeValues::Float32x3(normals),
         );
     }
+    // Note: baby_shark handles normal computation fallbacks automatically
 
-    // Extract UVs
+    // Add UVs
     if let Some(tex_coords_reader) = reader.read_tex_coords(0) {
         let uvs: Vec<[f32; 2]> = tex_coords_reader.into_f32().collect();
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, VertexAttributeValues::Float32x2(uvs));
     }
-
-    // Extract indices
-    if let Some(indices_reader) = reader.read_indices() {
-        let indices: Vec<u32> = indices_reader.into_u32().collect();
-        mesh.insert_indices(Indices::U32(indices));
-    }
+    // Note: baby_shark handles UV computation fallbacks automatically
 
     // Extract material
     let gltf_material = primitive.material();

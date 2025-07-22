@@ -25,6 +25,8 @@ bevy = { version = "0.16", default-features = false, features = [
     "png",
     "bevy_remote",
 ] }
+# baby_shark = { git = "https://github.com/fluid-notion-systems/baby_shark.git", branch = "main" }
+baby_shark = { path = "vendor/baby_shark", features = ["bevy"] }
 
 [profile.dev]
 opt-level = 1

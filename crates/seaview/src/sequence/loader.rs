@@ -3,7 +3,9 @@
 use super::{SequenceEvent, SequenceManager};
 use crate::sequence::async_cache::{log_cache_stats, update_cache_from_loads, AsyncMeshCache};
 use crate::systems::parallel_loader::{AsyncStlLoader, LoadCompleteEvent, LoadPriority};
+use baby_shark::mesh::Mesh as BabySharkMesh;
 use bevy::prelude::*;
+use nalgebra::Vector3;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
@@ -390,9 +392,9 @@ pub fn load_stl_file_optimized(
         );
     }
 
-    // Convert STL triangles to Bevy mesh
-    let mut positions = Vec::with_capacity(stl.faces.len() * 3);
-    let mut normals = Vec::with_capacity(stl.faces.len() * 3);
+    // Convert STL triangles to baby_shark mesh
+    let mut vertices = Vec::with_capacity(stl.faces.len() * 3);
+    let mut indices = Vec::with_capacity(stl.faces.len() * 3);
     let mut uvs = Vec::with_capacity(stl.faces.len() * 3);
 
     let mut valid_faces = 0;
@@ -483,17 +485,16 @@ pub fn load_stl_file_optimized(
         if dot_product < -0.5 {
             // The winding order is likely inverted
             inverted_normals += 1;
-            // Flip the normal
-            normal = [-normal[0], -normal[1], -normal[2]];
 
-            // Also swap vertex order to fix winding
-            positions.push(p0);
-            positions.push(p2); // Swapped
-            positions.push(p1); // Swapped
+            // Add vertices with swapped winding order
+            let base_idx = vertices.len();
+            vertices.push(Vector3::new(p0[0], p0[1], p0[2]));
+            vertices.push(Vector3::new(p2[0], p2[1], p2[2])); // Swapped
+            vertices.push(Vector3::new(p1[0], p1[1], p1[2])); // Swapped
 
-            normals.push(normal);
-            normals.push(normal);
-            normals.push(normal);
+            indices.push(base_idx);
+            indices.push(base_idx + 1);
+            indices.push(base_idx + 2);
 
             uvs.push([0.0, 0.0]);
             uvs.push([0.5, 1.0]); // Swapped
@@ -503,14 +504,15 @@ pub fn load_stl_file_optimized(
             continue;
         }
 
-        // Add vertices with calculated normal
-        positions.push(p0);
-        positions.push(p1);
-        positions.push(p2);
+        // Add vertices with normal winding order
+        let base_idx = vertices.len();
+        vertices.push(Vector3::new(p0[0], p0[1], p0[2]));
+        vertices.push(Vector3::new(p1[0], p1[1], p1[2]));
+        vertices.push(Vector3::new(p2[0], p2[1], p2[2]));
 
-        normals.push(normal);
-        normals.push(normal);
-        normals.push(normal);
+        indices.push(base_idx);
+        indices.push(base_idx + 1);
+        indices.push(base_idx + 2);
 
         // Simple UV mapping
         uvs.push([0.0, 0.0]);
@@ -565,14 +567,11 @@ pub fn load_stl_file_optimized(
         debug!("Successfully loaded {:?}: {} faces", path, valid_faces);
     }
 
-    // Create mesh
-    let mut mesh = Mesh::new(
-        bevy::render::mesh::PrimitiveTopology::TriangleList,
-        bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD,
-    );
-    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    // Create baby_shark mesh and convert to Bevy mesh
+    let baby_shark_mesh = BabySharkMesh::new(vertices, indices);
+    let mesh: Mesh = baby_shark_mesh.into();
+
+    // Note: baby_shark now handles UV computation automatically
 
     let stats = FileLoadStats {
         faces_processed: valid_faces,
@@ -584,46 +583,20 @@ pub fn load_stl_file_optimized(
 
 /// Create a fallback mesh when STL loading fails
 pub fn create_fallback_mesh() -> Mesh {
-    // Create a simple cube as fallback
+    // Create a simple cube as fallback using baby_shark
     let size = 1.0;
-    let vertices = vec![
-        // Front face
-        ([-size, -size, size], [0.0, 0.0, 1.0], [0.0, 0.0]),
-        ([size, -size, size], [0.0, 0.0, 1.0], [1.0, 0.0]),
-        ([size, size, size], [0.0, 0.0, 1.0], [1.0, 1.0]),
-        ([-size, size, size], [0.0, 0.0, 1.0], [0.0, 1.0]),
-        // Back face
-        ([size, -size, -size], [0.0, 0.0, -1.0], [0.0, 0.0]),
-        ([-size, -size, -size], [0.0, 0.0, -1.0], [1.0, 0.0]),
-        ([-size, size, -size], [0.0, 0.0, -1.0], [1.0, 1.0]),
-        ([size, size, -size], [0.0, 0.0, -1.0], [0.0, 1.0]),
+
+    // Flat array of triangle vertices for a cube
+    let triangle_vertices = vec![
+        // Front face (2 triangles)
+        -size, -size, size, size, -size, size, size, size, size, size, size, size, -size, size,
+        size, -size, -size, size, // Back face (2 triangles)
+        size, -size, -size, -size, -size, -size, -size, size, -size, -size, size, -size, size,
+        size, -size, size, -size, -size,
     ];
 
-    let indices = vec![
-        0, 1, 2, 2, 3, 0, // front
-        4, 5, 6, 6, 7, 4, // back
-    ];
-
-    let mut positions = Vec::new();
-    let mut normals = Vec::new();
-    let mut uvs = Vec::new();
-
-    for (position, normal, uv) in &vertices {
-        positions.push(*position);
-        normals.push(*normal);
-        uvs.push(*uv);
-    }
-
-    let mut mesh = Mesh::new(
-        bevy::render::mesh::PrimitiveTopology::TriangleList,
-        bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD
-            | bevy::render::render_asset::RenderAssetUsages::MAIN_WORLD,
-    );
-
-    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-    mesh.insert_indices(bevy::render::mesh::Indices::U32(indices));
-
-    mesh
+    // Use baby_shark for mesh creation with automatic vertex deduplication
+    let baby_shark_mesh = BabySharkMesh::from_iter(triangle_vertices.into_iter());
+    // baby_shark handles normal and UV computation in the conversion
+    baby_shark_mesh.into()
 }

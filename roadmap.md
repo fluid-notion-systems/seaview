@@ -4,16 +4,44 @@
 
 This document outlines a phased approach to reimplementing mesh-ripper functionality using modern Rust and Bevy (0.14+). The goal is to create a modular, maintainable, and performant mesh sequence viewer while addressing the limitations of the original implementation.
 
+## Baby Shark Integration Plan
+
+**Goal**: Standardize mesh representation across the codebase using baby_shark's geometry processing capabilities
+
+### Key Components:
+1. **Unified Mesh Representation**
+   - Use `baby_shark::mesh::Mesh` as the standard indexed mesh format
+   - Implement converters a vertex list into `baby_shark::mesh::Mesh`, utilizing CornerTable inter
+   - Leverage baby_shark's mesh processing algorithms
+
+2. **Mesh Conversion Pipeline**
+   - Polygon soup → Mesh conversion via `merge_points`
+   - Automatic normal calculation and repair
+   - Mesh validation and cleanup
+
+3. **Integration Points**
+   - STL loader → baby_shark `CornerTable`
+   - PLY/OBJ loaders → baby_shark `CornerTable`
+   - Mesh generation (marching cubes, etc.) → baby_shark conversion
+   - BRP mesh transmission → Send indexed format
+
+### Implementation Steps:
+1. Add baby_shark dependency to Cargo.toml
+2. Create mesh conversion trait for all loaders
+3. Update STL loader to output `CornerTable`
+4. Modify mesh_sender_test to use baby_shark conversion
+5. Create utilities for `CornerTable` ↔ Bevy `Mesh` conversion
+
 ## Phase 1: Foundation with Multi-Format Mesh Support
 **Duration: 4-5 weeks**
 **Goal: Establish project structure, basic rendering, and support multiple mesh formats**
 
 ### Milestones:
 1. **Project Setup**
-   - [ ] Initialize new Rust project with Bevy 0.14
-   - [ ] Set up cargo workspace structure
-   - [ ] Configure development environment (rustfmt, clippy, CI)
-   - [ ] Create basic plugin architecture
+   - [x] Initialize new Rust project with Bevy 0.16
+   - [x] Set up cargo workspace structure
+   - [x] Configure development environment (rustfmt, clippy, CI)
+   - [x] Create basic plugin architecture
 
 2. **Basic Rendering Pipeline**
    - [x] Implement minimal Bevy app with 3D scene
@@ -28,6 +56,10 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
    - [x] Create mesh format detection system
    - [x] Implement error handling for loading
    - [ ] Create plugin system for format loaders
+   - [ ] **Baby Shark Integration**
+     - [ ] Add baby_shark dependency
+     - [ ] Create `CornerTable` ↔ Bevy `Mesh` converters
+     - [ ] Implement mesh conversion trait
 
 4. **Format Implementations**
    - [x] STL loader (already implemented)
@@ -38,9 +70,13 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 5. **Mesh Processing Pipeline**
    - [x] Vertex/index buffer management
    - [x] Normal calculation for formats lacking them
-   - [ ] Bounding box calculation
+   - [x] Bounding box calculation (via baby_shark)
    - [ ] Basic mesh statistics
-   - [ ] Mesh validation and repair
+   - [x] Mesh validation and repair (via baby_shark)
+   - [ ] **Baby Shark Processing**
+     - [ ] Polygon soup to indexed conversion
+     - [ ] Mesh simplification integration
+     - [ ] Boolean operations support
 
 ### Deliverables:
 - [x] Basic app that can load and display STL files from any filesystem path
@@ -268,6 +304,7 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 - **serde**: Configuration serialization
 - **stl_io**: STL file format support
 - **bevy_brp_extras**: Remote protocol support
+- **baby_shark**: Geometry processing and mesh format conversion
 
 ## Risk Mitigation
 
@@ -321,17 +358,38 @@ This document outlines a phased approach to reimplementing mesh-ripper functiona
 - [x] Memory-efficient mesh preloading
 - [x] Visual mesh updates during sequence playback
 - [x] Debug logging and progress tracking
+- [x] Mesh caching system implementation
+- [x] Performance improvements and optimization
+- [x] Coordinate system transformation support
+- [x] Robust STL loading with error handling
+- [x] Normal validation and correction
+- [x] Material system updates
+- [x] Async mesh loading implementation
+- [x] Screen space reflections (SSR) experimentation
+- [x] BRP mesh sender test implementation
+- [x] Network-based mesh transmission via BRP
 
 ### In Progress:
+- [ ] Baby shark integration for mesh processing
+- [ ] Polygon soup to indexed mesh conversion in mesh_sender_test
+- [ ] Fixing inverted normals and mesh rendering issues
 - [ ] Additional mesh format support (PLY, OBJ)
 - [ ] Camera recording and playback system
 - [ ] UI framework integration
 
 ## Next Steps
 
-1. **Complete Phase 1 foundation** - focus on additional format support (PLY, OBJ)
-2. **Create abstraction layer** for mesh loading plugins
-3. **Implement PLY and OBJ loaders** as separate plugins
+1. **Implement baby_shark integration** (Immediate priority)
+   - Add dependency and create conversion utilities
+   - Update mesh_sender_test to use indexed format
+   - Test with existing STL sequences
+2. **Standardize mesh pipeline** around baby_shark
+   - Update STL loader to output `CornerTable`
+   - Create common mesh processing utilities
+   - Implement mesh statistics and validation
+3. **Complete additional format support** (PLY, OBJ)
+   - All formats should output to baby_shark `CornerTable`
+   - Ensure consistent processing pipeline
 4. **Begin Phase 3** - advanced camera features (recording/playback)
 5. **Add UI framework** for better user controls
 6. **Establish performance benchmarks** for optimization

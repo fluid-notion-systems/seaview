@@ -14,6 +14,8 @@ path = "src/main.rs"
 
 [dependencies]
 bevy = { workspace = true }
+baby_shark = { workspace = true }
+nalgebra = "0.33.2"
 stl_io = "0.7"
 clap = { version = "4.5", features = ["derive"] }
 bevy_brp_extras = { git = "https://github.com/natepiano/bevy_brp.git", rev = "6edff47" }
