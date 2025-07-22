@@ -116,6 +116,7 @@ impl LoadingState {
         }
     }
 
+    #[allow(dead_code)]
     pub fn progress_text(&self) -> String {
         if self.is_preloading {
             format!(

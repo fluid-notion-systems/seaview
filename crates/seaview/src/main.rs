@@ -8,7 +8,6 @@ mod coordinates;
 mod network;
 mod sequence;
 mod systems;
-mod ui;
 
 use cli::Args;
 use coordinates::SourceOrientation;
@@ -17,7 +16,6 @@ use systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
 use systems::diagnostics::RenderingDiagnosticsPlugin;
 use systems::network::{NetworkConfig, NetworkMeshPlugin};
 use systems::stl_loader::{StlFilePath, StlLoaderPlugin};
-use ui::UIPlugin;
 
 fn main() {
     // Parse command line arguments
@@ -71,7 +69,6 @@ fn main() {
         .add_plugins(StlLoaderPlugin)
         .add_plugins(systems::gltf_loader::GltfLoaderPlugin)
         .add_plugins(SequencePlugin)
-        .add_plugins(UIPlugin)
         .add_plugins(NetworkMeshPlugin)
         .add_plugins(BrpExtrasPlugin)
         .insert_resource(StlFilePath(args.path.clone()))

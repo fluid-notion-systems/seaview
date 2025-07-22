@@ -8,8 +8,6 @@ pub mod discovery;
 pub mod loader;
 pub mod playback;
 
-pub use loader::LoadingState;
-
 use bevy::prelude::*;
 use std::path::PathBuf;
 
@@ -172,6 +170,7 @@ impl Sequence {
     }
 
     /// Get frame info for a specific frame
+    #[allow(dead_code)]
     pub fn frame_info(&self, index: usize) -> Option<&FrameInfo> {
         self.frames.get(index)
     }
@@ -197,6 +196,7 @@ pub struct FrameInfo {
     #[allow(dead_code)]
     pub frame_number: usize,
     /// Original filename
+    #[allow(dead_code)]
     pub filename: String,
     /// File size in bytes
     #[allow(dead_code)]
@@ -225,8 +225,10 @@ impl FrameInfo {
 #[derive(Event, Debug)]
 pub enum SequenceEvent {
     /// A new sequence was loaded
+    #[allow(dead_code)]
     SequenceLoaded(String),
     /// Frame changed
+    #[allow(dead_code)]
     FrameChanged(usize),
     /// Playback started
     PlaybackStarted,
@@ -239,5 +241,6 @@ pub enum SequenceEvent {
     #[allow(dead_code)]
     DiscoveryCompleted(usize),
     /// Error occurred
+    #[allow(dead_code)]
     Error(String),
 }

@@ -9,7 +9,7 @@ pub struct SequencePlaybackPlugin;
 impl Plugin for SequencePlaybackPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<KeyHoldTimer>()
-            .add_systems(Update, (handle_playback_input, update_playback_ui));
+            .add_systems(Update, handle_playback_input);
     }
 }
 
@@ -218,51 +218,6 @@ fn handle_playback_input(
                     events.write(SequenceEvent::FrameChanged(frame));
                 }
             }
-        }
-    }
-}
-
-/// Component for UI text displaying playback status
-#[derive(Component)]
-pub struct PlaybackStatusText;
-
-/// Component for UI text displaying frame info
-#[derive(Component)]
-pub struct FrameInfoText;
-
-/// System that updates UI elements for playback
-fn update_playback_ui(
-    sequence_manager: Res<SequenceManager>,
-    mut status_query: Query<&mut Text, (With<PlaybackStatusText>, Without<FrameInfoText>)>,
-    mut frame_query: Query<&mut Text, (With<FrameInfoText>, Without<PlaybackStatusText>)>,
-) {
-    // Update playback status text
-    for mut text in status_query.iter_mut() {
-        let status = if sequence_manager.is_playing {
-            format!("▶ Playing @ {:.1} fps", sequence_manager.playback_fps)
-        } else {
-            "⏸ Paused".to_string()
-        };
-
-        // Create new text with status
-        *text = Text::new(status);
-    }
-
-    // Update frame info text
-    for mut text in frame_query.iter_mut() {
-        if let Some(sequence) = sequence_manager.current_sequence() {
-            if let Some(frame_info) = sequence.frame_info(sequence_manager.current_frame) {
-                let info = format!(
-                    "Frame {}/{} - {}",
-                    sequence_manager.current_frame + 1,
-                    sequence.frame_count(),
-                    frame_info.filename
-                );
-
-                *text = Text::new(info);
-            }
-        } else {
-            *text = Text::new("No sequence loaded");
         }
     }
 }
