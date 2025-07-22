@@ -1,5 +1,5 @@
-use crate::sequence::async_cache::AsyncMeshCache;
-use crate::systems::parallel_loader::{AsyncStlLoader, LoadPriority};
+use super::parallel_loader::{AsyncStlLoader, LoadPriority};
+use crate::lib::sequence::async_cache::AsyncMeshCache;
 use baby_shark::mesh::Mesh as BabySharkMesh;
 use bevy::prelude::*;
 use bevy::render::mesh::VertexAttributeValues;

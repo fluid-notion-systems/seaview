@@ -5,7 +5,7 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
-use crate::ui::state::{CreateSessionEvent, SessionSourceType, UiState};
+use crate::app::ui::state::{CreateSessionEvent, SessionSourceType, UiState};
 
 /// System that renders the top menu bar
 pub fn menu_bar_system(

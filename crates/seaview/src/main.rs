@@ -4,20 +4,13 @@ use bevy::window::{CursorGrabMode, PrimaryWindow};
 use bevy_brp_extras::BrpExtrasPlugin;
 use seaview::{SeaviewUiPlugin, SessionPlugin};
 
-mod cli;
-mod coordinates;
-
-mod network;
-mod sequence;
-mod systems;
-
-use cli::Args;
-use coordinates::SourceOrientation;
-use sequence::{discovery::DiscoverSequenceRequest, SequencePlugin};
-use systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
-use systems::diagnostics::RenderingDiagnosticsPlugin;
-use systems::network::NetworkMeshPlugin;
-use systems::stl_loader::{StlFilePath, StlLoaderPlugin};
+use seaview::app::cli::Args;
+use seaview::app::systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
+use seaview::app::systems::diagnostics::RenderingDiagnosticsPlugin;
+use seaview::app::systems::network::NetworkMeshPlugin;
+use seaview::app::systems::stl_loader::{StlFilePath, StlLoaderPlugin};
+use seaview::lib::coordinates::SourceOrientation;
+use seaview::lib::sequence::{discovery::DiscoverSequenceRequest, SequencePlugin};
 
 fn main() {
     // Parse command line arguments
@@ -46,13 +39,13 @@ fn main() {
 
     // Configure network receiving
     let network_config = if args.network_port.is_some() {
-        seaview::network::NetworkConfig {
+        seaview::lib::network::NetworkConfig {
             enabled: true,
             port: args.network_port.unwrap_or(9877),
             max_message_size_mb: 100,
         }
     } else {
-        seaview::network::NetworkConfig::default()
+        seaview::lib::network::NetworkConfig::default()
     };
 
     if network_config.enabled {
@@ -67,9 +60,9 @@ fn main() {
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(LogDiagnosticsPlugin::default())
         .add_plugins(RenderingDiagnosticsPlugin)
-        .add_plugins(systems::parallel_loader::AsyncStlLoaderPlugin)
+        .add_plugins(seaview::app::systems::parallel_loader::AsyncStlLoaderPlugin)
         .add_plugins(StlLoaderPlugin)
-        .add_plugins(systems::gltf_loader::GltfLoaderPlugin)
+        .add_plugins(seaview::app::systems::gltf_loader::GltfLoaderPlugin)
         .add_plugins(SequencePlugin)
         .add_plugins(NetworkMeshPlugin)
         .add_plugins(BrpExtrasPlugin)
@@ -137,7 +130,7 @@ fn setup(
 
 /// System to ensure cursor is visible on startup
 fn setup_cursor(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
-    if let Ok(mut window) = windows.get_single_mut() {
+    if let Ok(mut window) = windows.single_mut() {
         window.cursor_options.visible = true;
         window.cursor_options.grab_mode = CursorGrabMode::None;
     }

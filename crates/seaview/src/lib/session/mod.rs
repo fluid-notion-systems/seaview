@@ -24,7 +24,7 @@ impl Plugin for SessionPlugin {
             .add_event::<SessionUpdatedEvent>()
             .add_event::<SessionDeletedEvent>()
             .add_event::<FrameReceivedEvent>()
-            .add_event::<crate::network::NetworkMeshReceived>()
+            .add_event::<crate::lib::network::NetworkMeshReceived>()
             .add_systems(
                 Update,
                 (
@@ -63,13 +63,13 @@ pub struct FrameReceivedEvent {
 
 /// System that handles UI requests to create new sessions
 fn handle_create_session_requests(
-    mut create_events: EventReader<crate::ui::state::CreateSessionEvent>,
+    mut create_events: EventReader<crate::app::ui::state::CreateSessionEvent>,
     mut session_manager: ResMut<SessionManager>,
     mut created_events: EventWriter<SessionCreatedEvent>,
 ) {
     for event in create_events.read() {
         match &event.source_type {
-            crate::ui::state::SessionSourceType::Network { port } => {
+            crate::app::ui::state::SessionSourceType::Network { port } => {
                 match session_manager.create_network_session(&event.name, *port) {
                     Ok(session_id) => {
                         info!("Created network session '{}' on port {}", event.name, port);
@@ -80,7 +80,7 @@ fn handle_create_session_requests(
                     }
                 }
             }
-            crate::ui::state::SessionSourceType::File { path } => {
+            crate::app::ui::state::SessionSourceType::File { path } => {
                 match session_manager.create_file_session(&event.name, path.clone()) {
                     Ok(session_id) => {
                         info!("Created file session '{}' for path {:?}", event.name, path);
@@ -91,7 +91,7 @@ fn handle_create_session_requests(
                     }
                 }
             }
-            crate::ui::state::SessionSourceType::DataLake { connection_string } => {
+            crate::app::ui::state::SessionSourceType::DataLake { connection_string } => {
                 warn!(
                     "Data lake sessions not yet implemented: {}",
                     connection_string
@@ -103,13 +103,13 @@ fn handle_create_session_requests(
 
 /// System that bridges NetworkMeshReceived events to our session system
 fn bridge_network_to_session(
-    mut network_events: EventReader<crate::network::NetworkMeshReceived>,
+    mut network_events: EventReader<crate::lib::network::NetworkMeshReceived>,
     mut session_manager: ResMut<SessionManager>,
     mut frame_events: EventWriter<FrameReceivedEvent>,
     mut commands: Commands,
     mesh_query: Query<&Mesh3d>,
     meshes: Res<Assets<Mesh>>,
-    network_config: Res<crate::network::NetworkConfig>,
+    network_config: Res<crate::lib::network::NetworkConfig>,
 ) {
     for event in network_events.read() {
         // Find the session associated with the network port
@@ -168,7 +168,7 @@ pub struct SessionMeshMarker {
 /// System that updates session frame counts in the UI
 fn update_session_frame_counts(
     session_manager: Res<SessionManager>,
-    mut ui_state: ResMut<crate::ui::state::UiState>,
+    mut ui_state: ResMut<crate::app::ui::state::UiState>,
     frame_events: EventReader<FrameReceivedEvent>,
 ) {
     if !frame_events.is_empty() {

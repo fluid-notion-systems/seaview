@@ -1,5 +1,5 @@
-use crate::sequence::async_cache::AsyncMeshCache;
-use crate::systems::parallel_loader::{AsyncStlLoader, LoadPriority};
+use super::parallel_loader::{AsyncStlLoader, LoadPriority};
+use crate::lib::sequence::async_cache::AsyncMeshCache;
 use bevy::prelude::*;
 use std::path::PathBuf;
 
@@ -22,7 +22,7 @@ fn load_initial_stl_file(
     stl_path: Res<StlFilePath>,
     mut mesh_cache: ResMut<AsyncMeshCache>,
     async_loader: Res<AsyncStlLoader>,
-    _source_orientation: Res<crate::coordinates::SourceOrientation>,
+    _source_orientation: Res<crate::lib::coordinates::SourceOrientation>,
 ) {
     if let Some(path) = &stl_path.0 {
         // Only load if it's a file, not a directory
@@ -80,9 +80,9 @@ fn load_initial_stl_file(
 fn handle_initial_load_complete(
     mut commands: Commands,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut events: EventReader<crate::systems::parallel_loader::LoadCompleteEvent>,
+    mut events: EventReader<super::parallel_loader::LoadCompleteEvent>,
     mut mesh_cache: ResMut<AsyncMeshCache>,
-    source_orientation: Res<crate::coordinates::SourceOrientation>,
+    source_orientation: Res<crate::lib::coordinates::SourceOrientation>,
 ) {
     for event in events.read() {
         if event.success && mesh_cache.current_mesh_entity.is_none() {

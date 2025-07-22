@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use crate::sequence::loader::FileLoadStats;
-use crate::systems::gltf_loader::load_gltf_as_mesh;
+use super::gltf_loader::load_gltf_as_mesh;
+use crate::lib::sequence::loader::FileLoadStats;
 use baby_shark::mesh::Mesh as BabySharkMesh;
 
 /// Type alias for mesh data result to reduce complexity
@@ -572,7 +572,7 @@ fn process_completed_loads(
     loader: Res<AsyncStlLoader>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut events: EventWriter<LoadCompleteEvent>,
-    mut mesh_cache: ResMut<crate::sequence::async_cache::AsyncMeshCache>,
+    mut mesh_cache: ResMut<crate::lib::sequence::async_cache::AsyncMeshCache>,
 ) {
     for (handle, result) in loader.poll_completed() {
         match result.result {
@@ -641,7 +641,7 @@ fn process_completed_loads(
 /// System to update loading progress UI
 fn update_loading_progress(
     loader: Res<AsyncStlLoader>,
-    mut loading_state: ResMut<crate::sequence::loader::LoadingState>,
+    mut loading_state: ResMut<crate::lib::sequence::loader::LoadingState>,
 ) {
     let stats = loader.stats();
 

@@ -4,7 +4,9 @@ use bevy::prelude::*;
 
 use std::sync::{Arc, Mutex};
 
-use crate::network::{NetworkConfig, NetworkMeshReceived, NonBlockingMeshReceiver, ReceivedMesh};
+use crate::lib::network::{
+    NetworkConfig, NetworkMeshReceived, NonBlockingMeshReceiver, ReceivedMesh,
+};
 use baby_shark::mesh::Mesh as BabySharkMesh;
 use nalgebra::Vector3;
 

@@ -5,7 +5,7 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
-use crate::ui::state::UiState;
+use crate::app::ui::state::UiState;
 
 /// System that renders the playback controls panel
 pub fn playback_controls_system(

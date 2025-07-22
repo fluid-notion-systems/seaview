@@ -4,7 +4,7 @@
 
 use bevy::prelude::*;
 
-use crate::ui::state::{DeleteSessionEvent, SwitchSessionEvent, UiState};
+use crate::app::ui::state::{DeleteSessionEvent, SwitchSessionEvent, UiState};
 
 /// System that handles session switch events
 pub fn handle_switch_session_events(
@@ -35,7 +35,9 @@ pub fn handle_delete_session_events(
 }
 
 /// System that handles session creation events
-pub fn handle_create_session_events(mut events: EventReader<crate::ui::state::CreateSessionEvent>) {
+pub fn handle_create_session_events(
+    mut events: EventReader<crate::app::ui::state::CreateSessionEvent>,
+) {
     for event in events.read() {
         info!(
             "Creating new session '{}' with source: {:?}",

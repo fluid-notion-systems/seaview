@@ -6,8 +6,8 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 use uuid::Uuid;
 
-use crate::session::SessionManager;
-use crate::ui::state::{DeleteSessionEvent, SwitchSessionEvent, UiState};
+use crate::app::ui::state::{DeleteSessionEvent, SwitchSessionEvent, UiState};
+use crate::lib::session::SessionManager;
 
 /// System that renders the session management panel
 pub fn session_panel_system(
@@ -86,7 +86,7 @@ pub fn session_panel_system(
                 let network_sessions: Vec<_> = sessions_for_network
                     .iter()
                     .filter_map(|s| match &s.source {
-                        crate::session::types::SessionSource::Network { port, .. } => {
+                        crate::lib::session::types::SessionSource::Network { port, .. } => {
                             Some((*port, s.frame_count()))
                         }
                         _ => None,
@@ -128,7 +128,7 @@ pub fn session_panel_system(
 /// Render a single session item in the list
 fn render_session_item(
     ui: &mut egui::Ui,
-    session: &crate::session::Session,
+    session: &crate::lib::session::Session,
     is_active: bool,
     switch_events: &mut EventWriter<SwitchSessionEvent>,
 ) -> Option<Uuid> {

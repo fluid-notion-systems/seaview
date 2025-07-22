@@ -138,7 +138,7 @@ pub struct Sequence {
     /// List of frame files in order
     pub frames: Vec<FrameInfo>,
     /// Source coordinate system orientation
-    pub source_orientation: crate::coordinates::SourceOrientation,
+    pub source_orientation: crate::lib::coordinates::SourceOrientation,
     /// Pattern that matches the sequence files
     pub pattern: String,
 }
@@ -148,7 +148,7 @@ impl Sequence {
         name: String,
         base_dir: PathBuf,
         pattern: String,
-        source_orientation: crate::coordinates::SourceOrientation,
+        source_orientation: crate::lib::coordinates::SourceOrientation,
     ) -> Self {
         Self {
             name,
