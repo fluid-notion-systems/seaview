@@ -1,5 +1,12 @@
 [workspace]
 members = ["crates/seaview", "crates/seaview-network"]
+exclude = [
+    "vendor/baby_shark",
+    "vendor/bevy",
+    "vendor/bevy_brp",
+    "vendor/mesh-ripper",
+    "vendor/stl_io",
+]
 resolver = "2"
 
 [workspace.package]

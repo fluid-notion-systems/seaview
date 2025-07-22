@@ -256,12 +256,12 @@ fn update_mesh_info(
 
     println!("\nSummary:");
     println!("  Loaded meshes: {}/{}", loaded_count, query.iter().count());
-    println!("  Total vertices: {}", total_vertices);
-    println!("  Visible meshes: {}", visible_count);
+    println!("  Total vertices: {total_vertices}");
+    println!("  Visible meshes: {visible_count}");
     println!("  Asset storage size: {}", meshes.len());
 
     // Also check FPS
     let fps = 1.0 / time.delta_secs();
-    println!("  Current FPS: {:.1}", fps);
+    println!("  Current FPS: {fps:.1}");
     println!("================================\n");
 }

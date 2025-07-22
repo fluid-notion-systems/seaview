@@ -268,7 +268,7 @@ fn update_fps_counter(
     for mut text in query.iter_mut() {
         if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
             if let Some(value) = fps.smoothed() {
-                text.0 = format!("FPS: {:.0}", value);
+                text.0 = format!("FPS: {value:.0}");
             }
         }
     }

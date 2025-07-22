@@ -71,8 +71,7 @@ fn setup(
         .id();
 
     println!(
-        "Spawned triangle entity: {:?} with handle: {:?}",
-        triangle_entity, triangle_handle
+        "Spawned triangle entity: {triangle_entity:?} with handle: {triangle_handle:?}"
     );
 
     // Also spawn a built-in cube for comparison
@@ -90,8 +89,7 @@ fn setup(
         .id();
 
     println!(
-        "Spawned cube entity: {:?} with handle: {:?}",
-        cube_entity, cube_mesh
+        "Spawned cube entity: {cube_entity:?} with handle: {cube_mesh:?}"
     );
 
     // Create a large triangle mesh (1000 triangles)
@@ -153,8 +151,7 @@ fn setup(
         .id();
 
     println!(
-        "Spawned large mesh entity: {:?} with handle: {:?}",
-        large_entity, large_handle
+        "Spawned large mesh entity: {large_entity:?} with handle: {large_handle:?}"
     );
 }
 
@@ -203,9 +200,9 @@ fn print_mesh_info(
         }
     }
 
-    println!("Total entities with Mesh3d: {}", total_entities);
-    println!("Total vertices: {}", total_vertices);
-    println!("Visible meshes: {}", visible_count);
+    println!("Total entities with Mesh3d: {total_entities}");
+    println!("Total vertices: {total_vertices}");
+    println!("Visible meshes: {visible_count}");
 
     // Also print total mesh assets
     println!("Total mesh assets in storage: {}", meshes.len());

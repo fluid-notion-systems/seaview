@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn test_sender_config_default() {
         let config = SenderConfig::default();
-        assert_eq!(config.tcp_nodelay, true);
+        assert!(config.tcp_nodelay);
         assert_eq!(config.max_message_size, 100 * 1024 * 1024);
     }
 

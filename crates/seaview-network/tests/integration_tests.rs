@@ -67,7 +67,7 @@ fn test_multiple_frames() {
                     tx.send(received).expect("Failed to send");
                 }
                 Err(e) => {
-                    eprintln!("Receive error: {}", e);
+                    eprintln!("Receive error: {e}");
                     break;
                 }
             }
@@ -169,7 +169,7 @@ fn test_large_mesh() {
         // Create large mesh (1M vertices = ~12MB)
         let mut mesh = MeshFrame::new("large-mesh".to_string(), 0);
         mesh.vertices = vec![0.5; 1_000_000 * 3];
-        mesh.normals = Some(vec![0.0, 0.0, 1.0].repeat(1_000_000));
+        mesh.normals = Some([0.0, 0.0, 1.0].repeat(1_000_000));
 
         sender.send_mesh(&mesh).expect("Failed to send large mesh");
     });

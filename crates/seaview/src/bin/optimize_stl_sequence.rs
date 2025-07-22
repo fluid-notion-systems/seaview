@@ -65,6 +65,7 @@ struct FileStats {
     optimized_size: u64,
     original_vertices: usize,
     optimized_vertices: usize,
+    #[allow(dead_code)]
     original_triangles: usize,
     processing_time: Duration,
     error: Option<String>,
@@ -148,7 +149,7 @@ impl OverallStats {
             println!("\nVertex statistics:");
             println!("  Original vertices: {}", self.total_original_vertices);
             println!("  Optimized vertices: {}", self.total_optimized_vertices);
-            println!("  Vertex reduction: {:.1}%", vertex_reduction_percent);
+            println!("  Vertex reduction: {vertex_reduction_percent:.1}%");
 
             println!("\nPerformance:");
             println!(
@@ -183,10 +184,7 @@ fn optimize_stl_file(
 
     if verbose {
         println!("Processing: {:?}", input_path.file_name().unwrap());
-        println!(
-            "  Original: {} vertices, {} triangles",
-            original_vertices, original_triangles
-        );
+        println!("  Original: {original_vertices} vertices, {original_triangles} triangles");
     }
 
     // Optimize the mesh
@@ -246,6 +244,7 @@ fn optimize_indexed_mesh(mesh: IndexedMesh) -> Result<IndexedMesh, OptimizationE
     Ok(mesh)
 }
 
+#[allow(dead_code)]
 fn vertex_to_key(vertex: &Vertex) -> (u32, u32, u32) {
     (
         vertex[0].to_bits(),
@@ -264,7 +263,7 @@ fn process_directory(args: &Args) -> Result<(), OptimizationError> {
                 .file_name()
                 .ok_or_else(|| OptimizationError::PathError("Invalid directory name".to_string()))?
                 .to_string_lossy();
-            output.set_file_name(format!("{}_optimized", name));
+            output.set_file_name(format!("{name}_optimized"));
             output
         }
     };
@@ -276,7 +275,7 @@ fn process_directory(args: &Args) -> Result<(), OptimizationError> {
 
     // Find all STL files
     let pattern = glob::Pattern::new(&args.pattern)
-        .map_err(|e| OptimizationError::PathError(format!("Invalid pattern: {}", e)))?;
+        .map_err(|e| OptimizationError::PathError(format!("Invalid pattern: {e}")))?;
 
     let stl_files: Vec<PathBuf> = fs::read_dir(&args.directory)?
         .filter_map(|entry| entry.ok())
@@ -304,7 +303,7 @@ fn process_directory(args: &Args) -> Result<(), OptimizationError> {
             .num_threads(args.threads)
             .build_global()
             .map_err(|e| {
-                OptimizationError::OptimizationFailed(format!("Failed to set thread pool: {}", e))
+                OptimizationError::OptimizationFailed(format!("Failed to set thread pool: {e}"))
             })?;
     }
 
@@ -417,7 +416,7 @@ fn process_directory(args: &Args) -> Result<(), OptimizationError> {
     overall_stats.print_summary();
 
     if !args.dry_run && overall_stats.successful_files > 0 {
-        println!("\nOptimized files written to: {:?}", output_dir);
+        println!("\nOptimized files written to: {output_dir:?}");
     }
 
     Ok(())

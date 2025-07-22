@@ -45,6 +45,7 @@ impl From<&ReceivedMesh> for baby_shark::mesh::Mesh<f32> {
 }
 
 /// Mesh receiver that listens for incoming mesh data
+#[allow(dead_code)]
 pub struct MeshReceiver {
     listener: TcpListener,
     max_message_size: usize,
@@ -52,8 +53,9 @@ pub struct MeshReceiver {
 
 impl MeshReceiver {
     /// Create a new mesh receiver listening on the specified port
+    #[allow(dead_code)]
     pub fn new(port: u16, max_message_size_mb: usize) -> std::io::Result<Self> {
-        let listener = TcpListener::bind(format!("0.0.0.0:{}", port))?;
+        let listener = TcpListener::bind(format!("0.0.0.0:{port}"))?;
         listener.set_nonblocking(false)?;
 
         Ok(Self {
@@ -63,17 +65,20 @@ impl MeshReceiver {
     }
 
     /// Get the local address the receiver is bound to
+    #[allow(dead_code)]
     pub fn local_addr(&self) -> std::io::Result<std::net::SocketAddr> {
         self.listener.local_addr()
     }
 
     /// Accept a single connection and receive mesh data
+    #[allow(dead_code)]
     pub fn receive_one(&mut self) -> std::io::Result<ReceivedMesh> {
         let (mut stream, _addr) = self.listener.accept()?;
         self.handle_connection(&mut stream)
     }
 
     /// Run the receiver with a callback for each received mesh
+    #[allow(dead_code)]
     pub fn run<F>(&mut self, mut callback: F) -> std::io::Result<()>
     where
         F: FnMut(ReceivedMesh) -> bool,
@@ -87,11 +92,11 @@ impl MeshReceiver {
                         }
                     }
                     Err(e) => {
-                        eprintln!("Error handling connection: {}", e);
+                        eprintln!("Error handling connection: {e}");
                     }
                 },
                 Err(e) => {
-                    eprintln!("Error accepting connection: {}", e);
+                    eprintln!("Error accepting connection: {e}");
                 }
             }
         }
@@ -99,6 +104,7 @@ impl MeshReceiver {
     }
 
     /// Start receiver in a background thread with a channel
+    #[allow(dead_code)]
     pub fn run_async(mut self) -> (mpsc::Receiver<ReceivedMesh>, thread::JoinHandle<()>) {
         let (tx, rx) = mpsc::channel();
 
@@ -110,6 +116,7 @@ impl MeshReceiver {
     }
 
     /// Handle a single connection
+    #[allow(dead_code)]
     fn handle_connection(&self, stream: &mut TcpStream) -> std::io::Result<ReceivedMesh> {
         // Set timeout for read operations
         stream.set_read_timeout(Some(Duration::from_secs(30)))?;
@@ -147,7 +154,7 @@ pub struct NonBlockingMeshReceiver {
 impl NonBlockingMeshReceiver {
     /// Create a new non-blocking mesh receiver
     pub fn new(port: u16, max_message_size_mb: usize) -> std::io::Result<Self> {
-        let listener = TcpListener::bind(format!("0.0.0.0:{}", port))?;
+        let listener = TcpListener::bind(format!("0.0.0.0:{port}"))?;
         listener.set_nonblocking(true)?;
 
         Ok(Self {

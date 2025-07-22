@@ -80,10 +80,10 @@ fn setup(
             Mesh3d(handle),
             MeshMaterial3d(material.clone()),
             Transform::from_xyz(x, 0.0, 0.0),
-            Name::new(format!("Triangle with {}", name)),
+            Name::new(format!("Triangle with {name}")),
         ));
 
-        println!("Created mesh with RenderAssetUsages::{}", name);
+        println!("Created mesh with RenderAssetUsages::{name}");
     }
 
     // Also test with a built-in mesh for comparison
@@ -118,7 +118,7 @@ fn debug_mesh_info(
     }
     *last_update = current;
 
-    println!("\n=== Mesh Debug Info @ {:.1}s ===", current);
+    println!("\n=== Mesh Debug Info @ {current:.1}s ===");
 
     // Check stored handles
     println!("Checking stored handles:");
@@ -126,7 +126,7 @@ fn debug_mesh_info(
         if let Some(mesh) = meshes.get(handle) {
             println!("  {}: {} vertices ✓", name, mesh.count_vertices());
         } else {
-            println!("  {}: NOT FOUND IN ASSETS ✗", name);
+            println!("  {name}: NOT FOUND IN ASSETS ✗");
         }
     }
 
@@ -158,7 +158,7 @@ fn debug_mesh_info(
         found_count,
         query.iter().count()
     );
-    println!("  Visible entities: {}", visible_count);
+    println!("  Visible entities: {visible_count}");
     println!("  Total mesh assets: {}", meshes.len());
 
     // Also check what's actually in the mesh assets

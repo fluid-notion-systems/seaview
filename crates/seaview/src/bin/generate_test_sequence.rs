@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for frame in 0..num_frames {
         let angle = (frame as f32 / num_frames as f32) * 2.0 * PI;
-        let filename = format!("{}/cube_frame_{:04}.stl", output_dir, frame);
+        let filename = format!("{output_dir}/cube_frame_{frame:04}.stl");
 
         // Create a rotated cube
         let triangles = create_rotated_cube(angle);
@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut file = File::create(&filename)?;
         write_stl(&mut file, triangles.iter())?;
 
-        println!("Created {}", filename);
+        println!("Created {filename}");
     }
 
     // Also create a sequence with particle-like data (just points)
@@ -29,13 +29,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     create_dir_all(particle_dir)?;
 
     for frame in 0..30 {
-        let filename = format!("{}/particles_t{:03}.stl", particle_dir, frame);
+        let filename = format!("{particle_dir}/particles_t{frame:03}.stl");
         let triangles = create_particle_frame(frame);
 
         let mut file = File::create(&filename)?;
         write_stl(&mut file, triangles.iter())?;
 
-        println!("Created {}", filename);
+        println!("Created {filename}");
     }
 
     println!("\nTest sequences created successfully!");

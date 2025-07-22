@@ -348,9 +348,9 @@ impl ConnectionStats {
         println!("\nConnection Summary:");
         println!("  Frames received: {}", self.frames_received);
         println!("  Total triangles: {}", self.total_triangles);
-        println!("  Average FPS: {:.2}", fps);
-        println!("  Triangles/sec: {:.0}", triangles_per_sec);
-        println!("  Total time: {:?}", elapsed);
+        println!("  Average FPS: {fps:.2}");
+        println!("  Triangles/sec: {triangles_per_sec:.0}");
+        println!("  Total time: {elapsed:?}");
     }
 }
 
@@ -376,7 +376,7 @@ fn main() -> std::io::Result<()> {
 
     receiver.run(|mesh| {
         if let Err(e) = handle_mesh(&args, mesh, &mut stats) {
-            eprintln!("Error handling mesh: {}", e);
+            eprintln!("Error handling mesh: {e}");
         }
         true // Continue receiving
     })?;

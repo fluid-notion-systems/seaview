@@ -141,6 +141,7 @@ pub struct LoadingStats {
     pub total_attempts: usize,
     pub successful_loads: usize,
     pub failed_loads: usize,
+    #[allow(dead_code)]
     pub fallback_used: usize,
     pub total_faces_processed: usize,
     pub total_faces_skipped: usize,
@@ -316,7 +317,6 @@ fn handle_frame_changes(
 
 /// System to update cache statistics
 // update_cache_stats has been replaced by log_cache_stats from async_cache module
-
 /// Event for loading progress updates
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -343,6 +343,7 @@ pub struct FileLoadStats {
 /// Load an STL file from disk and convert it to a Bevy mesh
 /// Handles various malformed STL files gracefully
 /// Returns the mesh and statistics about the loading process
+#[allow(dead_code)]
 pub fn load_stl_file_optimized(
     path: &Path,
 ) -> Result<(Mesh, FileLoadStats), Box<dyn std::error::Error>> {
@@ -350,7 +351,7 @@ pub fn load_stl_file_optimized(
     let file = match File::open(path) {
         Ok(f) => f,
         Err(e) => {
-            return Err(format!("Failed to open STL file {:?}: {}", path, e).into());
+            return Err(format!("Failed to open STL file {path:?}: {e}").into());
         }
     };
     let mut reader = BufReader::new(file);
@@ -360,7 +361,7 @@ pub fn load_stl_file_optimized(
         Ok(stl) => stl,
         Err(e) => {
             // Try to provide more helpful error messages
-            let error_msg = format!("Failed to parse STL file: {}", e);
+            let error_msg = format!("Failed to parse STL file: {e}");
             return Err(error_msg.into());
         }
     };
@@ -543,8 +544,7 @@ pub fn load_stl_file_optimized(
     // Check if we have any valid faces
     if valid_faces == 0 {
         return Err(format!(
-            "No valid faces found in STL file (skipped {} invalid faces)",
-            skipped_faces
+            "No valid faces found in STL file (skipped {skipped_faces} invalid faces)"
         )
         .into());
     }
@@ -582,6 +582,7 @@ pub fn load_stl_file_optimized(
 }
 
 /// Create a fallback mesh when STL loading fails
+#[allow(dead_code)]
 pub fn create_fallback_mesh() -> Mesh {
     // Create a simple cube as fallback using baby_shark
     let size = 1.0;

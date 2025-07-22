@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             Err(e) => {
-                eprintln!("Receive error: {}", e);
+                eprintln!("Receive error: {e}");
             }
         }
     });

@@ -26,6 +26,7 @@ pub struct RenderingStats {
 }
 
 impl RenderingStats {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             max_history: 300, // 5 seconds at 60fps
@@ -75,6 +76,7 @@ pub struct FrameStats {
     pub avg: f32,
     pub min: f32,
     pub max: f32,
+    #[allow(dead_code)]
     pub p50: f32,
     pub p95: f32,
     pub p99: f32,
@@ -117,7 +119,7 @@ fn update_rendering_stats(
     for (mesh_handle, visibility) in mesh_query.iter() {
         stats.mesh_count += 1;
 
-        if visibility == &Visibility::Hidden {
+        if visibility == Visibility::Hidden {
             continue;
         }
 
@@ -242,12 +244,16 @@ fn detect_performance_issues(
 /// Component to track mesh statistics
 #[derive(Component, Debug)]
 pub struct MeshStats {
+    #[allow(dead_code)]
     pub vertex_count: usize,
+    #[allow(dead_code)]
     pub triangle_count: usize,
+    #[allow(dead_code)]
     pub file_path: String,
 }
 
 /// System to add mesh stats when meshes are created
+#[allow(dead_code)]
 pub fn track_mesh_stats(
     mut commands: Commands,
     meshes: Res<Assets<Mesh>>,
@@ -276,6 +282,7 @@ pub fn track_mesh_stats(
 }
 
 /// Helper to analyze why performance might be bad
+#[allow(dead_code)]
 pub fn analyze_performance_issues(stats: &RenderingStats) -> Vec<String> {
     let mut issues = Vec::new();
     let frame_stats = stats.frame_stats();
@@ -318,8 +325,7 @@ pub fn analyze_performance_issues(stats: &RenderingStats) -> Vec<String> {
     let bandwidth_gb_s = (stats.total_vertices * 32 * 60) as f32 / 1_000_000_000.0; // rough estimate
     if bandwidth_gb_s > 50.0 {
         issues.push(format!(
-            "High memory bandwidth requirement: ~{:.1} GB/s",
-            bandwidth_gb_s
+            "High memory bandwidth requirement: ~{bandwidth_gb_s:.1} GB/s"
         ));
     }
 

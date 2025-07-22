@@ -97,7 +97,7 @@ fn handle_discovery_requests(
         match discover_sequences(
             &request.directory,
             request.recursive,
-            &patterns,
+            patterns,
             request.source_orientation,
         ) {
             Ok(sequences) => {
@@ -116,7 +116,7 @@ fn handle_discovery_requests(
             }
             Err(e) => {
                 error!("Failed to discover sequences: {}", e);
-                events.write(SequenceEvent::Error(format!("Discovery failed: {}", e)));
+                events.write(SequenceEvent::Error(format!("Discovery failed: {e}")));
             }
         }
 
@@ -268,7 +268,13 @@ mod tests {
 
         // Discover sequences
         let patterns = SequencePatterns::default();
-        let sequences = discover_sequences(dir_path, false, &patterns).unwrap();
+        let sequences = discover_sequences(
+            dir_path,
+            false,
+            &patterns,
+            crate::coordinates::SourceOrientation::default(),
+        )
+        .unwrap();
 
         // Should find one sequence
         assert_eq!(sequences.len(), 1);

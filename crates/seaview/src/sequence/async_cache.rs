@@ -50,6 +50,7 @@ impl Default for AsyncMeshCache {
 
 impl AsyncMeshCache {
     /// Create a new cache with specified size
+    #[allow(dead_code)]
     pub fn new(max_size: usize) -> Self {
         Self {
             max_cache_size: max_size,
@@ -187,6 +188,7 @@ impl AsyncMeshCache {
     }
 
     /// Clear the cache
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.cache.clear();
         self.loading_handles.clear();

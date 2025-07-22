@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let path = Path::new(file_path);
     if !path.exists() {
-        eprintln!("Error: File '{}' does not exist", file_path);
+        eprintln!("Error: File '{file_path}' does not exist");
         std::process::exit(1);
     }
 
@@ -220,7 +220,7 @@ fn convert_to_ascii(path: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> 
 
     // Create output filename
     let stem = path.file_stem().unwrap_or_default().to_string_lossy();
-    let output_path = path.with_file_name(format!("{}-ascii.stl", stem));
+    let output_path = path.with_file_name(format!("{stem}-ascii.stl"));
 
     let output_file = File::create(&output_path)?;
     let mut writer = BufWriter::new(output_file);
@@ -233,7 +233,7 @@ fn convert_to_ascii(path: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> 
     let num_triangles = reader.read_u32::<LittleEndian>()?;
 
     // Write ASCII header
-    writeln!(writer, "solid {}", stem)?;
+    writeln!(writer, "solid {stem}")?;
 
     // Read and convert triangles
     for i in 0..num_triangles {
@@ -285,8 +285,7 @@ fn convert_to_ascii(path: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> 
             // Default normal for degenerate triangles
             normal = [0.0, 0.0, 1.0];
             warn!(
-                "Triangle {} has degenerate or invalid normal, using default",
-                i
+                "Triangle {i} has degenerate or invalid normal, using default"
             );
         }
 
@@ -295,14 +294,14 @@ fn convert_to_ascii(path: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> 
         for vertex in &vertices {
             for &coord in vertex {
                 if !coord.is_finite() {
-                    warn!("Triangle {} has invalid vertex coordinate: {}", i, coord);
+                    warn!("Triangle {i} has invalid vertex coordinate: {coord}");
                     valid = false;
                 }
             }
         }
 
         if !valid {
-            warn!("Skipping triangle {} due to invalid coordinates", i);
+            warn!("Skipping triangle {i} due to invalid coordinates");
             continue;
         }
 
@@ -324,7 +323,7 @@ fn convert_to_ascii(path: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> 
         writeln!(writer, "  endfacet")?;
     }
 
-    writeln!(writer, "endsolid {}", stem)?;
+    writeln!(writer, "endsolid {stem}")?;
     writer.flush()?;
 
     Ok(output_path)
@@ -335,7 +334,7 @@ fn fix_ascii_stl(path: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
 
     // Create output filename
     let stem = path.file_stem().unwrap_or_default().to_string_lossy();
-    let output_path = path.with_file_name(format!("{}-fixed.stl", stem));
+    let output_path = path.with_file_name(format!("{stem}-fixed.stl"));
 
     let output_file = File::create(&output_path)?;
     let mut writer = BufWriter::new(output_file);
@@ -381,17 +380,16 @@ fn fix_ascii_stl(path: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
                     // In a more sophisticated version, we could calculate from vertices
                     writeln!(writer, "  facet normal 0.000000 0.000000 1.000000")?;
                     fixed_count += 1;
-                    warn!("Fixed NaN/Inf normal at line {}", line_number);
+                    warn!("Fixed NaN/Inf normal at line {line_number}");
                 } else {
                     // Write the original line if no fix was needed
-                    writeln!(writer, "{}", line)?;
+                    writeln!(writer, "{line}")?;
                 }
             } else {
                 // Malformed line, write as-is
-                writeln!(writer, "{}", line)?;
+                writeln!(writer, "{line}")?;
                 warn!(
-                    "Malformed facet normal line at line {}: {}",
-                    line_number, line
+                    "Malformed facet normal line at line {line_number}: {line}"
                 );
             }
         } else if trimmed.starts_with("vertex") {
@@ -407,7 +405,7 @@ fn fix_ascii_stl(path: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
                             vertex[i] = val;
                         } else {
                             needs_fix = true;
-                            warn!("Found NaN/Inf vertex coordinate at line {}", line_number);
+                            warn!("Found NaN/Inf vertex coordinate at line {line_number}");
                             // For vertices, we can't just use 0, so skip this triangle
                         }
                     } else {
@@ -421,25 +419,25 @@ fn fix_ascii_stl(path: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
                 }
 
                 if !needs_fix {
-                    writeln!(writer, "{}", line)?;
+                    writeln!(writer, "{line}")?;
                 } else {
                     // Skip vertices with NaN/Inf - this will corrupt the triangle
                     // In a real implementation, we'd need to skip the entire facet
-                    warn!("Skipping vertex with NaN/Inf at line {}", line_number);
+                    warn!("Skipping vertex with NaN/Inf at line {line_number}");
                 }
             } else {
-                writeln!(writer, "{}", line)?;
+                writeln!(writer, "{line}")?;
             }
         } else {
             // Write all other lines as-is
-            writeln!(writer, "{}", line)?;
+            writeln!(writer, "{line}")?;
         }
     }
 
     writer.flush()?;
 
     if fixed_count > 0 {
-        println!("Fixed {} facet normals with NaN/Inf values", fixed_count);
+        println!("Fixed {fixed_count} facet normals with NaN/Inf values");
     } else {
         println!("No NaN/Inf values found in normals");
     }

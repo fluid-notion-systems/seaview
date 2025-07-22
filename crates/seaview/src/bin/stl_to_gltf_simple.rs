@@ -75,6 +75,7 @@ enum ConversionError {
     PathError(String),
 
     #[error("Invalid argument: {0}")]
+    #[allow(dead_code)]
     InvalidArgument(String),
 }
 
@@ -83,7 +84,9 @@ struct ConversionStats {
     path: PathBuf,
     original_size: u64,
     output_size: u64,
+    #[allow(dead_code)]
     original_vertices: usize,
+    #[allow(dead_code)]
     original_triangles: usize,
     processing_time: Duration,
     error: Option<String>,
@@ -117,10 +120,7 @@ fn convert_stl_to_gltf(
 
     if args.verbose {
         println!("Converting: {:?}", input_path.file_name().unwrap());
-        println!(
-            "  Original: {} vertices, {} triangles",
-            original_vertices, original_triangles
-        );
+        println!("  Original: {original_vertices} vertices, {original_triangles} triangles");
     }
 
     // Convert to glTF
@@ -397,7 +397,7 @@ fn process_file(input_path: &Path, args: &Args) -> Result<ConversionStats, Conve
     let output_path = determine_output_path(input_path, &args.output, &args.format)?;
 
     if args.verbose {
-        println!("Processing: {:?} -> {:?}", input_path, output_path);
+        println!("Processing: {input_path:?} -> {output_path:?}");
     }
 
     convert_stl_to_gltf(input_path, &output_path, args)
@@ -429,7 +429,7 @@ fn determine_output_path(
 
 fn process_directory(args: &Args) -> Result<Vec<ConversionStats>, ConversionError> {
     let pattern = glob::Pattern::new(&args.pattern)
-        .map_err(|e| ConversionError::PathError(format!("Invalid pattern: {}", e)))?;
+        .map_err(|e| ConversionError::PathError(format!("Invalid pattern: {e}")))?;
 
     let stl_files: Vec<PathBuf> = fs::read_dir(&args.input)?
         .filter_map(|entry| entry.ok())
@@ -452,7 +452,7 @@ fn process_directory(args: &Args) -> Result<Vec<ConversionStats>, ConversionErro
         rayon::ThreadPoolBuilder::new()
             .num_threads(args.threads)
             .build_global()
-            .map_err(|e| ConversionError::GltfError(format!("Failed to set thread pool: {}", e)))?;
+            .map_err(|e| ConversionError::GltfError(format!("Failed to set thread pool: {e}")))?;
     }
 
     let results = if args.parallel {
@@ -472,7 +472,7 @@ fn process_directory(args: &Args) -> Result<Vec<ConversionStats>, ConversionErro
         match result {
             Ok(stat) => stats.push(stat),
             Err(e) => {
-                eprintln!("Error: {}", e);
+                eprintln!("Error: {e}");
                 stats.push(ConversionStats {
                     path: args.input.clone(),
                     original_size: 0,
@@ -495,8 +495,8 @@ fn print_summary(stats: &[ConversionStats]) {
 
     println!("\n=== Conversion Summary ===");
     println!("Total files: {}", stats.len());
-    println!("  Successful: {}", successful);
-    println!("  Failed: {}", failed);
+    println!("  Successful: {successful}");
+    println!("  Failed: {failed}");
 
     if successful > 0 {
         let total_original_size: u64 = stats
@@ -524,7 +524,7 @@ fn print_summary(stats: &[ConversionStats]) {
         println!("\nSize statistics:");
         println!("  Total original: {} MB", total_original_size / 1_048_576);
         println!("  Total output: {} MB", total_output_size / 1_048_576);
-        println!("  Size reduction: {:.1}%", size_reduction_percent);
+        println!("  Size reduction: {size_reduction_percent:.1}%");
 
         println!("\nPerformance:");
         println!("  Total time: {:.2}s", total_processing_time.as_secs_f64());
@@ -538,7 +538,7 @@ fn print_summary(stats: &[ConversionStats]) {
     for stat in stats.iter().filter(|s| s.error.is_some()) {
         if let Some(error) = &stat.error {
             eprintln!("\nFailed: {:?}", stat.path);
-            eprintln!("  Error: {}", error);
+            eprintln!("  Error: {error}");
         }
     }
 }
@@ -552,7 +552,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
     for &val in &args.base_color {
-        if val < 0.0 || val > 1.0 {
+        if !(0.0..=1.0).contains(&val) {
             eprintln!("Error: base_color values must be between 0.0 and 1.0");
             std::process::exit(1);
         }

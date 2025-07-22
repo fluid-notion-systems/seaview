@@ -18,7 +18,7 @@ impl Plugin for GltfLoaderPlugin {
 /// Load a glTF/GLB file directly (synchronous alternative for simple cases)
 pub fn load_gltf_as_mesh(path: &Path) -> Result<(Mesh, Option<StandardMaterial>), String> {
     let (document, buffers, _images) =
-        gltf::import(path).map_err(|e| format!("Failed to import glTF: {}", e))?;
+        gltf::import(path).map_err(|e| format!("Failed to import glTF: {e}"))?;
 
     // For simplicity, we'll just load the first primitive of the first mesh
     let gltf_mesh = document
@@ -89,6 +89,7 @@ pub fn load_gltf_as_mesh(path: &Path) -> Result<(Mesh, Option<StandardMaterial>)
 }
 
 /// Check if a file is a glTF/GLB file based on extension
+#[allow(dead_code)]
 pub fn is_gltf_file(path: &Path) -> bool {
     if let Some(ext) = path.extension() {
         let ext = ext.to_string_lossy().to_lowercase();
@@ -99,6 +100,7 @@ pub fn is_gltf_file(path: &Path) -> bool {
 }
 
 /// Integration with the async loader system
+#[allow(dead_code)]
 pub fn queue_gltf_load(
     path: &Path,
     mesh_cache: &mut AsyncMeshCache,

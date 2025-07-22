@@ -11,6 +11,7 @@ pub enum SourceOrientation {
     /// X+ is right, Y+ is forward, Z+ is up (common in some fluid simulations)
     FluidX3D,
     /// Custom transformation matrix
+    #[allow(dead_code)]
     Custom(Mat3),
 }
 
@@ -22,7 +23,7 @@ impl Default for SourceOrientation {
 
 impl SourceOrientation {
     /// Convert the source orientation to a transform that can be applied to meshes
-    pub fn to_transform(&self) -> Transform {
+    pub fn to_transform(self) -> Transform {
         match self {
             SourceOrientation::YUp => Transform::IDENTITY,
             SourceOrientation::ZUp => {
@@ -34,7 +35,7 @@ impl SourceOrientation {
                 // This is the same as ZUp
                 Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
             }
-            SourceOrientation::Custom(mat) => Transform::from_matrix(Mat4::from_mat3(*mat)),
+            SourceOrientation::Custom(mat) => Transform::from_matrix(Mat4::from_mat3(mat)),
         }
     }
 
@@ -45,8 +46,7 @@ impl SourceOrientation {
             "zup" | "z-up" | "z_up" => Ok(Self::ZUp),
             "fluidx3d" | "fluid-x3d" | "fluid_x3d" => Ok(Self::FluidX3D),
             _ => Err(format!(
-                "Unknown coordinate system: {}. Valid options are: yup, zup, fluidx3d",
-                s
+                "Unknown coordinate system: {s}. Valid options are: yup, zup, fluidx3d"
             )),
         }
     }

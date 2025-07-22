@@ -190,7 +190,7 @@ fn debug_mesh_info(
     }
     *last_update = current;
 
-    println!("\n=== Mesh Debug Info @ {:.1}s ===", current);
+    println!("\n=== Mesh Debug Info @ {current:.1}s ===");
 
     // Check stored handles
     println!("Stored mesh handles: {}", mesh_storage.handles.len());
@@ -198,7 +198,7 @@ fn debug_mesh_info(
         if let Some(mesh) = meshes.get(handle) {
             println!("  Handle {}: {} vertices", i, mesh.count_vertices());
         } else {
-            println!("  Handle {}: NOT FOUND IN ASSETS", i);
+            println!("  Handle {i}: NOT FOUND IN ASSETS");
         }
     }
 
@@ -235,9 +235,9 @@ fn debug_mesh_info(
     }
 
     println!("\nSummary:");
-    println!("  Total vertices: {}", total_vertices);
+    println!("  Total vertices: {total_vertices}");
     println!("  Total vertices (M): {:.2}", total_vertices as f32 / 1_000_000.0);
-    println!("  Visible meshes: {}", visible_count);
+    println!("  Visible meshes: {visible_count}");
     println!("  Mesh assets in storage: {}", meshes.len());
 
     // Get FPS from diagnostics
@@ -245,7 +245,7 @@ fn debug_mesh_info(
         .get(&bevy::diagnostic::FrameTimeDiagnosticsPlugin::FPS)
     {
         if let Some(fps) = fps_diagnostic.smoothed() {
-            println!("  FPS: {:.1}", fps);
+            println!("  FPS: {fps:.1}");
         }
     }
 

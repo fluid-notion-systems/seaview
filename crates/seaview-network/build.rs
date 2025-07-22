@@ -59,7 +59,7 @@ extern "C" {
                 println!("Generated C header at: {}", output_file.display());
             }
             Err(e) => {
-                eprintln!("Warning: Unable to generate C bindings: {}", e);
+                eprintln!("Warning: Unable to generate C bindings: {e}");
                 eprintln!("This is expected if building without the ffi feature");
             }
         }

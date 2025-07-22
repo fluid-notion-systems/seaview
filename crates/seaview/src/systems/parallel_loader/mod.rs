@@ -9,6 +9,9 @@ use crate::sequence::loader::FileLoadStats;
 use crate::systems::gltf_loader::load_gltf_as_mesh;
 use baby_shark::mesh::Mesh as BabySharkMesh;
 
+/// Type alias for mesh data result to reduce complexity
+type MeshDataResult = Result<(Vec<f32>, Vec<f32>, Vec<f32>, FileLoadStats), String>;
+
 pub struct AsyncStlLoaderPlugin;
 
 impl Plugin for AsyncStlLoaderPlugin {
@@ -56,7 +59,7 @@ pub enum LoadPriority {
 pub struct LoadResult {
     pub handle: LoadHandle,
     pub path: PathBuf,
-    pub result: Result<(Vec<f32>, Vec<f32>, Vec<f32>, FileLoadStats), String>,
+    pub result: MeshDataResult,
 }
 
 /// Status of a load operation
@@ -65,7 +68,9 @@ pub enum LoadStatus {
     Queued,
     Loading,
     Completed,
+    #[allow(dead_code)]
     Failed(String),
+    #[allow(dead_code)]
     Cancelled,
 }
 
@@ -192,6 +197,7 @@ impl AsyncStlLoader {
     }
 
     /// Cancel a pending load operation
+    #[allow(dead_code)]
     pub fn cancel(&self, handle: LoadHandle) -> bool {
         let mut state = self.loading_state.lock().unwrap();
 
@@ -381,10 +387,7 @@ fn worker_thread(
 }
 
 /// Parallel mesh loading implementation (supports STL and glTF/GLB)
-fn load_stl_parallel(
-    path: &Path,
-    use_fallback: bool,
-) -> Result<(Vec<f32>, Vec<f32>, Vec<f32>, FileLoadStats), String> {
+fn load_stl_parallel(path: &Path, use_fallback: bool) -> MeshDataResult {
     use std::fs::File;
     use std::io::BufReader;
 
@@ -413,14 +416,14 @@ fn load_stl_parallel(
                 Some(bevy::render::mesh::VertexAttributeValues::Float32x3(norm)) => {
                     norm.iter().flatten().copied().collect()
                 }
-                _ => vec![0.0, 1.0, 0.0].repeat(positions.len() / 3), // Default normals
+                _ => [0.0, 1.0, 0.0].repeat(positions.len() / 3), // Default normals
             };
 
             let uvs = match mesh.attribute(bevy::prelude::Mesh::ATTRIBUTE_UV_0) {
                 Some(bevy::render::mesh::VertexAttributeValues::Float32x2(uv)) => {
                     uv.iter().flatten().copied().collect()
                 }
-                _ => vec![0.0, 0.0].repeat(positions.len() / 3), // Default UVs
+                _ => [0.0, 0.0].repeat(positions.len() / 3), // Default UVs
             };
 
             let stats = FileLoadStats {
@@ -432,13 +435,13 @@ fn load_stl_parallel(
         }
         "stl" => {
             // Original STL loading code
-            let file = File::open(path)
-                .map_err(|e| format!("Failed to open STL file {:?}: {}", path, e))?;
+            let file =
+                File::open(path).map_err(|e| format!("Failed to open STL file {path:?}: {e}"))?;
             let mut reader = BufReader::new(file);
 
             // Read STL file
             let stl = stl_io::read_stl(&mut reader)
-                .map_err(|e| format!("Failed to parse STL file: {}", e))?;
+                .map_err(|e| format!("Failed to parse STL file: {e}"))?;
 
             // Validate
             if stl.faces.is_empty() {
@@ -479,13 +482,13 @@ fn load_stl_parallel(
         _ => {
             if use_fallback {
                 // Try to load as STL anyway
-                let file = File::open(path)
-                    .map_err(|e| format!("Failed to open file {:?}: {}", path, e))?;
+                let file =
+                    File::open(path).map_err(|e| format!("Failed to open file {path:?}: {e}"))?;
                 let mut reader = BufReader::new(file);
 
                 // Read STL file
                 let stl = stl_io::read_stl(&mut reader)
-                    .map_err(|e| format!("Failed to parse file as STL: {}", e))?;
+                    .map_err(|e| format!("Failed to parse file as STL: {e}"))?;
 
                 // Validate
                 if stl.faces.is_empty() {
@@ -523,13 +526,14 @@ fn load_stl_parallel(
 
                 Ok((positions, normals, uvs, stats))
             } else {
-                Err(format!("Unsupported file format: {}", extension))
+                Err(format!("Unsupported file format: {extension}"))
             }
         }
     }
 }
 
 /// Create fallback mesh data
+#[allow(dead_code)]
 fn create_fallback_mesh_data() -> (Vec<f32>, Vec<f32>, Vec<f32>, FileLoadStats) {
     // Simple cube
     let positions = vec![
@@ -557,6 +561,7 @@ fn create_fallback_mesh_data() -> (Vec<f32>, Vec<f32>, Vec<f32>, FileLoadStats) 
 // Events for loader progress
 #[derive(Event)]
 pub struct LoadCompleteEvent {
+    #[allow(dead_code)]
     pub handle: LoadHandle,
     pub path: PathBuf,
     pub success: bool,

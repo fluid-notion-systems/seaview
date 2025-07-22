@@ -47,16 +47,22 @@ pub struct NetworkReceiver {
 /// Component to mark entities that were created from network data
 #[derive(Component)]
 pub struct NetworkMesh {
+    #[allow(dead_code)]
     pub simulation_uuid: String,
+    #[allow(dead_code)]
     pub frame_number: u32,
 }
 
 /// Event emitted when a new mesh is received over the network
-#[derive(Event)]
+#[derive(Event, Debug)]
 pub struct NetworkMeshReceived {
+    #[allow(dead_code)]
     pub entity: Entity,
+    #[allow(dead_code)]
     pub simulation_uuid: String,
+    #[allow(dead_code)]
     pub frame_number: u32,
+    #[allow(dead_code)]
     pub triangle_count: u32,
 }
 

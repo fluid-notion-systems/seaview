@@ -49,7 +49,7 @@ impl MessageHeader {
         if version != PROTOCOL_VERSION {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Unsupported protocol version: {}", version),
+                format!("Unsupported protocol version: {version}"),
             ));
         }
 
@@ -59,7 +59,7 @@ impl MessageHeader {
             _ => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
-                    format!("Unknown message type: {}", message_type_raw),
+                    format!("Unknown message type: {message_type_raw}"),
                 ))
             }
         };
@@ -131,8 +131,7 @@ impl MeshData {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 format!(
-                    "Invalid message size. Expected {} bytes, got {}",
-                    expected_size, message_size
+                    "Invalid message size. Expected {expected_size} bytes, got {message_size}"
                 ),
             ));
         }

@@ -189,7 +189,7 @@ fn handle_load_completion(
                     Mesh3d(mesh),
                     MeshMaterial3d(material),
                     Transform::from_xyz(x, 0.0, z).with_scale(Vec3::splat(0.5)),
-                    Name::new(format!("Demo Mesh {}", index)),
+                    Name::new(format!("Demo Mesh {index}")),
                 ))
                 .id();
 
@@ -225,11 +225,7 @@ fn update_ui(
 
     // Update stats text
     if let Ok(mut text) = text_query.single_mut() {
-        let loading = if demo_state.completed < demo_state.total_queued {
-            demo_state.total_queued - demo_state.completed
-        } else {
-            0
-        };
+        let loading = demo_state.total_queued.saturating_sub(demo_state.completed);
 
         text.0 = format!(
             "Queued: {} | Loading: {} | Completed: {} | Failed: {} | FPS: {:.1}",

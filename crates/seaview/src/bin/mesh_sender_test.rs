@@ -266,11 +266,11 @@ fn main() -> std::io::Result<()> {
                     args.animate,
                     args.verbose,
                 ) {
-                    eprintln!("Error sending frame {}: {}", frame_number, e);
+                    eprintln!("Error sending frame {frame_number}: {e}");
                 }
             }
             Err(e) => {
-                eprintln!("Failed to connect: {}", e);
+                eprintln!("Failed to connect: {e}");
                 std::process::exit(1);
             }
         }
