@@ -2,7 +2,7 @@ use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use bevy_brp_extras::BrpExtrasPlugin;
-use seaview::SeaviewUiPlugin;
+use seaview::{SeaviewUiPlugin, SessionPlugin};
 
 mod cli;
 mod coordinates;
@@ -16,7 +16,7 @@ use coordinates::SourceOrientation;
 use sequence::{discovery::DiscoverSequenceRequest, SequencePlugin};
 use systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
 use systems::diagnostics::RenderingDiagnosticsPlugin;
-use systems::network::{NetworkConfig, NetworkMeshPlugin};
+use systems::network::NetworkMeshPlugin;
 use systems::stl_loader::{StlFilePath, StlLoaderPlugin};
 
 fn main() {
@@ -46,13 +46,13 @@ fn main() {
 
     // Configure network receiving
     let network_config = if args.network_port.is_some() {
-        NetworkConfig {
+        seaview::network::NetworkConfig {
             enabled: true,
             port: args.network_port.unwrap_or(9877),
             max_message_size_mb: 100,
         }
     } else {
-        NetworkConfig::default()
+        seaview::network::NetworkConfig::default()
     };
 
     if network_config.enabled {
@@ -73,6 +73,7 @@ fn main() {
         .add_plugins(SequencePlugin)
         .add_plugins(NetworkMeshPlugin)
         .add_plugins(BrpExtrasPlugin)
+        .add_plugins(SessionPlugin)
         .add_plugins(SeaviewUiPlugin)
         .insert_resource(StlFilePath(args.path.clone()))
         .insert_resource(source_orientation)

@@ -1692,6 +1692,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-link",
 ]
@@ -4987,6 +4988,7 @@ dependencies = [
  "nalgebra",
  "rayon",
  "regex",
+ "serde",
  "stl_io",
  "tempfile",
  "thiserror 1.0.69",

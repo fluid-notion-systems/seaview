@@ -6,17 +6,8 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 use uuid::Uuid;
 
+use crate::session::SessionManager;
 use crate::ui::state::{DeleteSessionEvent, SwitchSessionEvent, UiState};
-
-/// Mock session data for now (will be replaced with actual SessionManager)
-#[derive(Debug, Clone)]
-pub struct SessionInfo {
-    pub id: Uuid,
-    pub name: String,
-    pub frame_count: usize,
-    pub source: String,
-    pub created: String,
-}
 
 /// System that renders the session management panel
 pub fn session_panel_system(
@@ -24,6 +15,7 @@ pub fn session_panel_system(
     mut ui_state: ResMut<UiState>,
     mut switch_events: EventWriter<SwitchSessionEvent>,
     _delete_events: EventWriter<DeleteSessionEvent>,
+    session_manager: Res<SessionManager>,
 ) {
     if !ui_state.show_session_panel {
         debug!("Session panel is hidden");
@@ -34,30 +26,8 @@ pub fn session_panel_system(
 
     let ctx = contexts.ctx_mut().unwrap();
 
-    // Create some mock sessions for testing
-    let mock_sessions = vec![
-        SessionInfo {
-            id: Uuid::new_v4(),
-            name: "Simulation Run #42".to_string(),
-            frame_count: 847,
-            source: "Network (192.168.1.100)".to_string(),
-            created: "2024-01-15 10:30".to_string(),
-        },
-        SessionInfo {
-            id: Uuid::new_v4(),
-            name: "Simulation Run #43".to_string(),
-            frame_count: 1200,
-            source: "File (sim_43.tar.gz)".to_string(),
-            created: "2024-01-15 14:22".to_string(),
-        },
-        SessionInfo {
-            id: Uuid::new_v4(),
-            name: "Test Session".to_string(),
-            frame_count: 150,
-            source: "Network (localhost:9877)".to_string(),
-            created: "2024-01-16 09:15".to_string(),
-        },
-    ];
+    // Get real sessions from SessionManager
+    let sessions = session_manager.get_all_sessions();
 
     let panel_width = ui_state.panel_sizes.session_panel_width;
 
@@ -77,23 +47,28 @@ pub fn session_panel_system(
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    for session in &mock_sessions {
-                        let is_active = ui_state
-                            .active_session
-                            .map(|id| id == session.id)
-                            .unwrap_or(false);
+                    if sessions.is_empty() {
+                        ui.label("No sessions yet");
+                        ui.label("Create a new session from the Session menu");
+                    } else {
+                        for session in sessions {
+                            let is_active = ui_state
+                                .active_session
+                                .map(|id| id == session.id)
+                                .unwrap_or(false);
 
-                        let delete_requested = ui
-                            .push_id(session.id, |ui| {
-                                render_session_item(ui, session, is_active, &mut switch_events)
-                            })
-                            .inner;
+                            let delete_requested = ui
+                                .push_id(session.id, |ui| {
+                                    render_session_item(ui, session, is_active, &mut switch_events)
+                                })
+                                .inner;
 
-                        if let Some(session_id) = delete_requested {
-                            ui_state.temp_state.show_delete_confirmation = Some(session_id);
+                            if let Some(session_id) = delete_requested {
+                                ui_state.temp_state.show_delete_confirmation = Some(session_id);
+                            }
+
+                            ui.add_space(5.0);
                         }
-
-                        ui.add_space(5.0);
                     }
                 });
 
@@ -105,20 +80,36 @@ pub fn session_panel_system(
                 ui.heading("Network Status");
                 ui.separator();
 
-                ui.horizontal(|ui| {
-                    ui.label("Status:");
-                    ui.colored_label(egui::Color32::from_rgb(0, 255, 0), "● Connected");
-                });
+                // Check if we have any active network sessions
+                // Get sessions again to avoid borrow conflict
+                let sessions_for_network = session_manager.get_all_sessions();
+                let network_sessions: Vec<_> = sessions_for_network
+                    .iter()
+                    .filter_map(|s| match &s.source {
+                        crate::session::types::SessionSource::Network { port, .. } => {
+                            Some((*port, s.frame_count()))
+                        }
+                        _ => None,
+                    })
+                    .collect();
 
-                ui.horizontal(|ui| {
-                    ui.label("Port:");
-                    ui.label("9877");
-                });
-
-                ui.horizontal(|ui| {
-                    ui.label("Received:");
-                    ui.label("0 frames");
-                });
+                if network_sessions.is_empty() {
+                    ui.horizontal(|ui| {
+                        ui.label("Status:");
+                        ui.colored_label(egui::Color32::from_rgb(255, 255, 0), "● No Active");
+                    });
+                } else {
+                    for (port, frame_count) in network_sessions {
+                        ui.horizontal(|ui| {
+                            ui.label("Port:");
+                            ui.label(format!("{}", port));
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Frames:");
+                            ui.label(format!("{}", frame_count));
+                        });
+                    }
+                }
 
                 ui.add_space(10.0);
 
@@ -137,7 +128,7 @@ pub fn session_panel_system(
 /// Render a single session item in the list
 fn render_session_item(
     ui: &mut egui::Ui,
-    session: &SessionInfo,
+    session: &crate::session::Session,
     is_active: bool,
     switch_events: &mut EventWriter<SwitchSessionEvent>,
 ) -> Option<Uuid> {
@@ -184,17 +175,17 @@ fn render_session_item(
 
                 // Session info
                 ui.label(
-                    egui::RichText::new(format!("{} frames", session.frame_count))
+                    egui::RichText::new(format!("{} frames", session.frame_count()))
                         .small()
                         .color(egui::Color32::from_gray(180)),
                 );
                 ui.label(
-                    egui::RichText::new(&session.source)
+                    egui::RichText::new(session.source.display_string())
                         .small()
                         .color(egui::Color32::from_gray(180)),
                 );
                 ui.label(
-                    egui::RichText::new(&session.created)
+                    egui::RichText::new(session.created_at.format("%Y-%m-%d %H:%M").to_string())
                         .small()
                         .color(egui::Color32::from_gray(150)),
                 );

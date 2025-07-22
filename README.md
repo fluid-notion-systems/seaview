@@ -30,6 +30,20 @@ No additional dependencies required.
 cargo build --release
 ```
 
+### Installing Binary
+
+You can install seaview as a system binary using the provided script:
+
+```bash
+./scripts/cargo_install.sh
+```
+
+This will install seaview to `~/.cargo/bin`. To uninstall:
+
+```bash
+./scripts/cargo_uninstall.sh
+```
+
 ## Running
 
 ```bash

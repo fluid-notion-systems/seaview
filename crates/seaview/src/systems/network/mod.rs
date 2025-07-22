@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use std::sync::{Arc, Mutex};
 
-use crate::network::{NonBlockingMeshReceiver, ReceivedMesh};
+use crate::network::{NetworkConfig, NetworkMeshReceived, NonBlockingMeshReceiver, ReceivedMesh};
 use baby_shark::mesh::Mesh as BabySharkMesh;
 use nalgebra::Vector3;
 
@@ -17,24 +17,6 @@ impl Plugin for NetworkMeshPlugin {
             .add_event::<NetworkMeshReceived>()
             .add_systems(Startup, setup_network_receiver)
             .add_systems(Update, poll_network_meshes);
-    }
-}
-
-/// Configuration for network mesh receiving
-#[derive(Resource)]
-pub struct NetworkConfig {
-    pub enabled: bool,
-    pub port: u16,
-    pub max_message_size_mb: usize,
-}
-
-impl Default for NetworkConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            port: 9877, // Different from mesh_receiver_service default (9876)
-            max_message_size_mb: 100,
-        }
     }
 }
 
@@ -51,19 +33,6 @@ pub struct NetworkMesh {
     pub simulation_uuid: String,
     #[allow(dead_code)]
     pub frame_number: u32,
-}
-
-/// Event emitted when a new mesh is received over the network
-#[derive(Event, Debug)]
-pub struct NetworkMeshReceived {
-    #[allow(dead_code)]
-    pub entity: Entity,
-    #[allow(dead_code)]
-    pub simulation_uuid: String,
-    #[allow(dead_code)]
-    pub frame_number: u32,
-    #[allow(dead_code)]
-    pub triangle_count: u32,
 }
 
 fn setup_network_receiver(
