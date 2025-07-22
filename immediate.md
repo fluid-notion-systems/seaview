@@ -324,7 +324,7 @@ also, use thiserror, and tracing for verbose logging, (using info, debug)
 - [x] Design minimal C API surface
 - [x] Implement FFI functions
 - [x] Generate C headers with cbindgen
-- [ ] Create C++ example
+- [x] Create C++ example
 - [ ] Test with mock data
 
 ### Phase 3: Integrate with FluidX3d (Days 5-7)
