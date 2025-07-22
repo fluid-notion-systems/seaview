@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::app::systems::parallel_loader::{AsyncStlLoader, LoadHandle, LoadPriority, LoadStatus};
+use crate::lib::parallel_loader::{AsyncStlLoader, LoadHandle, LoadPriority, LoadStatus};
 use crate::lib::sequence::loader::{FileLoadStats, LoadingStats};
 
 /// Async-aware mesh cache that integrates with the parallel loader
@@ -214,7 +214,7 @@ pub fn update_cache_from_loads(
     _loader: Res<AsyncStlLoader>,
     mut cache: ResMut<AsyncMeshCache>,
     _meshes: ResMut<Assets<Mesh>>,
-    mut events: EventReader<crate::app::systems::parallel_loader::LoadCompleteEvent>,
+    mut events: EventReader<crate::lib::parallel_loader::LoadCompleteEvent>,
 ) {
     for event in events.read() {
         if event.success {

@@ -1,7 +1,7 @@
 //! Sequence loader module for efficient mesh loading with caching
 
 use super::{SequenceEvent, SequenceManager};
-use crate::app::systems::parallel_loader::{AsyncStlLoader, LoadCompleteEvent, LoadPriority};
+use crate::lib::parallel_loader::{AsyncStlLoader, LoadCompleteEvent, LoadPriority};
 use crate::lib::sequence::async_cache::{log_cache_stats, update_cache_from_loads, AsyncMeshCache};
 use baby_shark::mesh::Mesh as BabySharkMesh;
 use bevy::prelude::*;

@@ -1,4 +1,4 @@
-use super::parallel_loader::{AsyncStlLoader, LoadPriority};
+use crate::lib::parallel_loader::{AsyncStlLoader, LoadPriority};
 use crate::lib::sequence::async_cache::AsyncMeshCache;
 use bevy::prelude::*;
 use std::path::PathBuf;
@@ -80,7 +80,7 @@ fn load_initial_stl_file(
 fn handle_initial_load_complete(
     mut commands: Commands,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut events: EventReader<super::parallel_loader::LoadCompleteEvent>,
+    mut events: EventReader<crate::lib::parallel_loader::LoadCompleteEvent>,
     mut mesh_cache: ResMut<AsyncMeshCache>,
     source_orientation: Res<crate::lib::coordinates::SourceOrientation>,
 ) {

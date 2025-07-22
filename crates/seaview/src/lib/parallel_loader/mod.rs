@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use super::gltf_loader::load_gltf_as_mesh;
+use crate::lib::gltf_loader::load_gltf_as_mesh;
 use crate::lib::sequence::loader::FileLoadStats;
 use baby_shark::mesh::Mesh as BabySharkMesh;
 
