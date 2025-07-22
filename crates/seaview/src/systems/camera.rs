@@ -12,6 +12,7 @@
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
+use bevy_egui::EguiContexts;
 
 #[derive(Component)]
 pub struct FpsCamera {
@@ -131,6 +132,7 @@ pub fn cursor_grab_system(
     input: Res<ButtonInput<MouseButton>>,
     key_input: Res<ButtonInput<KeyCode>>,
     mut camera_query: Query<&mut FpsCamera, With<Camera>>,
+    mut egui_contexts: EguiContexts,
 ) {
     let Ok(mut window) = windows.single_mut() else {
         return;
@@ -138,6 +140,14 @@ pub fn cursor_grab_system(
     let Ok(mut fps_camera) = camera_query.single_mut() else {
         return;
     };
+
+    // Check if egui wants to use the mouse/keyboard
+    if let Ok(ctx) = egui_contexts.ctx_mut() {
+        if ctx.wants_pointer_input() || ctx.wants_keyboard_input() {
+            // Don't grab cursor if egui is using the mouse
+            return;
+        }
+    }
 
     if input.just_pressed(MouseButton::Left) {
         // Grab cursor when left mouse button is pressed

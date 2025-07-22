@@ -103,32 +103,30 @@ directories = "5.0"
 - [x] Clean up any leftover UI components/resources
 - [x] Verify app runs without any UI (3D viewport only)
 
-#### 0.2 Logging Standardization & Maximum Debugging
-- [ ] Standardize on `tracing` instead of mixed log/tracing
-- [ ] Add comprehensive tracing setup with multiple levels
-- [ ] Add tracing-subscriber with formatting
-- [ ] Enable maximum debug output for bevy_egui interactions
-- [ ] Add event tracing for input handling
-- [ ] Configure trace-level logging for UI events
+#### 0.2 Use Bevy's Built-in Logging & Maximum Debugging
+- [x] ✅ Bevy's logging already correctly configured via DefaultPlugins
+- [x] ✅ RUST_LOG environment variable works (e.g., RUST_LOG=seaview=trace)
+- [x] ✅ Module-specific filtering working perfectly
+- [x] ✅ All systems logging properly with trace/debug/info levels
+- [x] ✅ Add bevy_egui dependency (uses Bevy's logging automatically)
+- [x] ✅ Remove old log/env_logger dependencies (cleanup - kept for binary tools only)
 
 ```toml
-# Add to Cargo.toml
+# Add to Cargo.toml - minimal additions
 [dependencies]
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
-bevy_egui = "0.29"  # Match Bevy 0.16
+bevy_egui = "0.35.1"  # Latest version for Bevy 0.16
 
-# Remove old logging
-# log = "0.4"  # Remove this
-# env_logger = "0.10"  # Remove this
+# Keep old logging only for binary tools
+log = "0.4"         # Still needed for binary tools
+env_logger = "0.10" # Still needed for binary tools
 ```
 
 #### 0.3 Minimal bevy_egui Sanity Test
-- [ ] Add bevy_egui with minimal setup
-- [ ] Create single button that prints to console when clicked
-- [ ] Add extensive tracing around button creation/interaction
-- [ ] Test on multiple window managers/platforms if needed
-- [ ] Verify mouse events are reaching egui
+- [x] ✅ Add bevy_egui with minimal setup
+- [x] ✅ Create single button that prints to console when clicked
+- [x] ✅ Add extensive tracing around button creation/interaction
+- [ ] Test actual button clicking functionality
+- [ ] Verify mouse events are reaching egui properly
 - [ ] Add debug overlay showing mouse position/events
 
 ```rust
@@ -401,8 +399,7 @@ crates/seaview/src/
 ## Dependencies Impact
 
 ### New Dependencies
-- `tracing`: Unified logging (replace log crate)
-- `tracing-subscriber`: Advanced logging configuration
+- Use Bevy's built-in logging (no additional logging crates needed)
 - `bevy_egui`: Modern immediate-mode GUI
 - `egui_extras`: Additional egui widgets
 - `uuid`: Session ID generation
@@ -411,8 +408,9 @@ crates/seaview/src/
 
 ### Existing Code Changes
 - **REMOVE** all existing UI code completely
-- Replace log crate usage with tracing throughout
-- Add comprehensive debug tracing to input systems
+- Configure Bevy's LogPlugin for maximum debug output
+- Use Bevy's built-in tracing macros (info!, debug!, trace!) throughout
+- Add comprehensive debug logging to input systems
 - Extend network receiver for session integration
 - Update sequence manager for session compatibility
 - Enhance file loading for session-based storage

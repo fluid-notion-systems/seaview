@@ -1,6 +1,7 @@
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
+use seaview::SeaviewUiPlugin;
 
 mod cli;
 mod coordinates;
@@ -71,6 +72,7 @@ fn main() {
         .add_plugins(SequencePlugin)
         .add_plugins(NetworkMeshPlugin)
         .add_plugins(BrpExtrasPlugin)
+        .add_plugins(SeaviewUiPlugin)
         .insert_resource(StlFilePath(args.path.clone()))
         .insert_resource(source_orientation)
         .insert_resource(network_config)

@@ -4,6 +4,8 @@
 //! including network communication for real-time mesh streaming.
 
 pub mod network;
+pub mod ui;
 
 // Re-export commonly used types
 pub use network::{MeshReceiver, ReceivedMesh};
+pub use ui::SeaviewUiPlugin;

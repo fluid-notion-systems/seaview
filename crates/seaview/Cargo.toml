@@ -22,8 +22,9 @@ bevy_brp_extras = { git = "https://github.com/natepiano/bevy_brp.git", rev = "6e
 regex = "1.10"
 rayon = "1.10"
 byteorder = "1.4"
-log = "0.4"
-env_logger = "0.10"
+bevy_egui = "0.35.1"
+log = "0.4"                                                                              # Still needed for binary tools
+env_logger = "0.10"                                                                      # Still needed for binary tools
 crossbeam-channel = "0.5"
 meshopt = "0.3"
 thiserror = "1.0"
