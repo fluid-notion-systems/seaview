@@ -1,5 +1,6 @@
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
+use bevy::window::{CursorGrabMode, PrimaryWindow};
 use bevy_brp_extras::BrpExtrasPlugin;
 use seaview::SeaviewUiPlugin;
 
@@ -76,7 +77,7 @@ fn main() {
         .insert_resource(StlFilePath(args.path.clone()))
         .insert_resource(source_orientation)
         .insert_resource(network_config)
-        .add_systems(Startup, (setup, handle_input_path))
+        .add_systems(Startup, (setup, handle_input_path, setup_cursor))
         .add_systems(Update, (camera_controller, cursor_grab_system))
         .run();
 }
@@ -131,6 +132,14 @@ fn setup(
         brightness: 500.0,
         ..default()
     });
+}
+
+/// System to ensure cursor is visible on startup
+fn setup_cursor(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
+    if let Ok(mut window) = windows.get_single_mut() {
+        window.cursor_options.visible = true;
+        window.cursor_options.grab_mode = CursorGrabMode::None;
+    }
 }
 
 /// System that handles the input path and decides whether to load a single file or discover a sequence

@@ -6,9 +6,11 @@
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 
+pub mod state;
 pub mod systems;
 pub mod widgets;
 
+pub use state::UiState;
 pub use systems::*;
 
 /// Main UI plugin that sets up all UI functionality
@@ -21,10 +23,20 @@ impl Plugin for SeaviewUiPlugin {
             app.add_plugins(EguiPlugin::default());
         }
 
+        // Add UI state management
+        app.add_plugins(state::UiStatePlugin);
+
         // Register UI systems
         app.add_plugins(systems::UiSystemsPlugin);
 
         // Log that the UI plugin is loaded
         info!("Seaview UI Plugin loaded - Phase 0.2 egui integration active");
+
+        // Log initial UI state
+        let ui_state = app.world().resource::<UiState>();
+        info!("Initial UI state - show_session_panel: {}, show_network_panel: {}, show_playback_controls: {}",
+              ui_state.show_session_panel,
+              ui_state.show_network_panel,
+              ui_state.show_playback_controls);
     }
 }

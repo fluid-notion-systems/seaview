@@ -26,7 +26,7 @@ impl Default for FpsCamera {
         Self {
             sensitivity: 0.3,
             speed: 10.0,
-            escape_mode: false,
+            escape_mode: true,
         }
     }
 }
