@@ -322,8 +322,8 @@ also, use thiserror, and tracing for verbose logging, (using info, debug)
 
 ### Phase 2: Add FFI Layer (Days 3-4)
 - [x] Design minimal C API surface
-- [ ] Implement FFI functions
-- [ ] Generate C headers with cbindgen
+- [x] Implement FFI functions
+- [x] Generate C headers with cbindgen
 - [ ] Create C++ example
 - [ ] Test with mock data
 
