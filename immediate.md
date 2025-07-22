@@ -308,16 +308,17 @@ g++ -o fluidx3d main.cpp \
 
 ## Migration Tasks
 
+IMPORTANT: before committing, update immedate.md (this file), and check off what has been done
 IMPORTANT IMPORTANT IMPORTANT: Please git commit after each STEP, within each phase. VERY IMPORTANT. AGAIN. VERY IMPORTANT.
 IMPORTANT IMPORTANT IMPORTANT: Please cargo check, and cargo clippy within each step, and fix errors / warnings. VERY IMPORTANT. AGAIN. VERY IMPORTANT.
 also, use thiserror, and tracing for verbose logging, (using info, debug)
 
 ### Phase 1: Extract Core Code (Days 1-2)
-- [ ] Create seaview-network crate structure
-- [ ] Move protocol definitions with serde
-- [ ] Implement simple TCP sender
-- [ ] Implement threaded TCP receiver
-- [ ] Create basic tests
+- [x] Create seaview-network crate structure
+- [x] Move protocol definitions with serde
+- [x] Implement simple TCP sender
+- [x] Implement threaded TCP receiver
+- [x] Create basic tests
 
 ### Phase 2: Add FFI Layer (Days 3-4)
 - [ ] Design minimal C API surface
