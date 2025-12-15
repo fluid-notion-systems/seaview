@@ -7,7 +7,6 @@ use std::thread;
 
 use crate::lib::gltf_loader::load_gltf_as_mesh;
 use crate::lib::sequence::loader::FileLoadStats;
-use baby_shark::mesh::Mesh as BabySharkMesh;
 
 /// Type alias for mesh data result to reduce complexity
 type MeshDataResult = Result<(Vec<f32>, Vec<f32>, Vec<f32>, FileLoadStats), String>;
@@ -479,56 +478,7 @@ fn load_stl_parallel(path: &Path, use_fallback: bool) -> MeshDataResult {
 
             Ok((positions, normals, uvs, stats))
         }
-        _ => {
-            if use_fallback {
-                // Try to load as STL anyway
-                let file =
-                    File::open(path).map_err(|e| format!("Failed to open file {path:?}: {e}"))?;
-                let mut reader = BufReader::new(file);
-
-                // Read STL file
-                let stl = stl_io::read_stl(&mut reader)
-                    .map_err(|e| format!("Failed to parse file as STL: {e}"))?;
-
-                // Validate
-                if stl.faces.is_empty() {
-                    return Err("File contains no faces".into());
-                }
-
-                // Convert IndexedMesh to raw vertex data
-                let mut positions = Vec::with_capacity(stl.faces.len() * 9);
-                let mut normals = Vec::with_capacity(stl.faces.len() * 9);
-                let mut uvs = Vec::with_capacity(stl.faces.len() * 6);
-
-                for face in &stl.faces {
-                    // Add vertices for this face
-                    for &vertex_idx in &face.vertices {
-                        let vertex = &stl.vertices[vertex_idx];
-                        positions.push(vertex[0]);
-                        positions.push(vertex[1]);
-                        positions.push(vertex[2]);
-
-                        // Add normal (same for all vertices of a face)
-                        normals.push(face.normal[0]);
-                        normals.push(face.normal[1]);
-                        normals.push(face.normal[2]);
-
-                        // Simple UV mapping
-                        uvs.push(0.0);
-                        uvs.push(0.0);
-                    }
-                }
-
-                let stats = FileLoadStats {
-                    faces_processed: stl.faces.len(),
-                    faces_skipped: 0,
-                };
-
-                Ok((positions, normals, uvs, stats))
-            } else {
-                Err(format!("Unsupported file format: {extension}"))
-            }
-        }
+        _ => Err(format!("Unsupported file format: {extension}")),
     }
 }
 
@@ -583,18 +533,31 @@ fn process_completed_loads(
                     .map(|c| [c[0], c[1], c[2]])
                     .collect();
 
-                let _normals: Vec<[f32; 3]> = normals
+                let normals: Vec<[f32; 3]> = normals
                     .chunks_exact(3)
                     .map(|c| [c[0], c[1], c[2]])
                     .collect();
 
-                let _uvs: Vec<[f32; 2]> = uvs.chunks_exact(2).map(|c| [c[0], c[1]]).collect();
+                let uvs: Vec<[f32; 2]> = uvs.chunks_exact(2).map(|c| [c[0], c[1]]).collect();
 
-                // Use baby_shark for mesh optimization with vertex deduplication
-                let baby_shark_mesh =
-                    BabySharkMesh::from_iter(positions.iter().flat_map(|&[x, y, z]| [x, y, z]));
-                // baby_shark handles normal and UV computation automatically
-                let mesh: Mesh = baby_shark_mesh.into();
+                // Create Bevy mesh directly with positions and the original STL normals
+                // This preserves the correct face normals from the STL file instead of recomputing them
+                use bevy::render::mesh::Indices;
+                use bevy::render::render_asset::RenderAssetUsages;
+                use bevy::render::render_resource::PrimitiveTopology;
+
+                let mut mesh = Mesh::new(
+                    PrimitiveTopology::TriangleList,
+                    RenderAssetUsages::default(),
+                );
+
+                mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions.clone());
+                mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+                mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+
+                // Create indices for the triangle list (sequential since we have non-indexed vertices)
+                let indices: Vec<u32> = (0..positions.len() as u32).collect();
+                mesh.insert_indices(Indices::U32(indices));
 
                 let mesh_handle = meshes.add(mesh);
 

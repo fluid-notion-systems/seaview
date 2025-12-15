@@ -78,7 +78,7 @@ fn handle_playback_input(
 
     // Only process input if we have a sequence loaded
     if sequence_manager.current_sequence.is_none() {
-        info!("No sequence loaded, ignoring input");
+        debug!("No sequence loaded, ignoring input");
         return;
     }
 

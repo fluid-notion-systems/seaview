@@ -99,7 +99,7 @@ impl LoadingState {
         self.is_preloading = false;
         if let Some(start) = self.start_time {
             let duration = start.elapsed();
-            info!(
+            debug!(
                 "Preloading complete: {} frames in {:.2}s ({:.1} fps)",
                 self.frames_loaded,
                 duration.as_secs_f64(),
@@ -309,7 +309,7 @@ fn handle_frame_changes(
             info!("Queued mesh for loading: {:?}", path);
         }
     } else {
-        warn!(
+        debug!(
             "No path for current frame {}",
             sequence_manager.current_frame
         );
