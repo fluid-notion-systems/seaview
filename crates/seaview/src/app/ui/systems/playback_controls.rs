@@ -5,12 +5,14 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
+use crate::app::systems::camera::CenterOnMeshEvent;
 use crate::app::ui::state::UiState;
 
 /// System that renders the playback controls panel
 pub fn playback_controls_system(
     mut contexts: EguiContexts,
     mut ui_state: ResMut<UiState>,
+    mut center_events: EventWriter<CenterOnMeshEvent>,
     time: Res<Time>,
 ) {
     if !ui_state.show_playback_controls {
@@ -59,6 +61,19 @@ pub fn playback_controls_system(
                     // Next frame button
                     if ui.button("⏭").on_hover_text("Next frame").clicked() {
                         ui_state.next_frame();
+                    }
+
+                    ui.separator();
+
+                    // Center camera button
+                    if ui
+                        .button("🎯")
+                        .on_hover_text("Center camera on mesh")
+                        .clicked()
+                    {
+                        info!("🎯 Center camera button clicked!");
+                        center_events.write(CenterOnMeshEvent);
+                        info!("CenterOnMeshEvent sent");
                     }
 
                     ui.separator();

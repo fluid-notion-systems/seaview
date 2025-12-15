@@ -5,7 +5,10 @@ use bevy_brp_extras::BrpExtrasPlugin;
 use seaview::{SeaviewUiPlugin, SessionPlugin};
 
 use seaview::app::cli::Args;
-use seaview::app::systems::camera::{camera_controller, cursor_grab_system, FpsCamera};
+use seaview::app::systems::camera::{
+    camera_controller, cursor_grab_system, debug_mesh_cache_status, handle_center_on_mesh,
+    CenterOnMeshEvent, FpsCamera,
+};
 use seaview::app::systems::diagnostics::RenderingDiagnosticsPlugin;
 use seaview::app::systems::network::NetworkMeshPlugin;
 use seaview::app::systems::stl_loader::{StlFilePath, StlLoaderPlugin};
@@ -71,8 +74,17 @@ fn main() {
         .insert_resource(StlFilePath(args.path.clone()))
         .insert_resource(source_orientation)
         .insert_resource(network_config)
+        .add_event::<CenterOnMeshEvent>()
         .add_systems(Startup, (setup, handle_input_path, setup_cursor))
-        .add_systems(Update, (camera_controller, cursor_grab_system))
+        .add_systems(
+            Update,
+            (
+                camera_controller,
+                cursor_grab_system,
+                handle_center_on_mesh,
+                // debug_mesh_cache_status,
+            ),
+        )
         .run();
 }
 
