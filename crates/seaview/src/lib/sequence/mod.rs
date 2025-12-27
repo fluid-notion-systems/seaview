@@ -3,9 +3,7 @@
 //! This module provides functionality for discovering, loading, and playing back
 //! sequences of mesh files (e.g., simulation timesteps).
 
-pub mod async_cache;
 pub mod discovery;
-pub mod loader;
 pub mod playback;
 
 use bevy::prelude::*;
@@ -18,7 +16,6 @@ impl Plugin for SequencePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             discovery::SequenceDiscoveryPlugin,
-            loader::SequenceLoaderPlugin,
             playback::SequencePlaybackPlugin,
         ))
         .init_resource::<SequenceManager>()

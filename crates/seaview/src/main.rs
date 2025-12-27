@@ -6,12 +6,11 @@ use seaview::{SeaviewUiPlugin, SessionPlugin};
 
 use seaview::app::cli::Args;
 use seaview::app::systems::camera::{
-    camera_controller, cursor_grab_system, debug_mesh_cache_status, handle_center_on_mesh,
-    CenterOnMeshEvent, FpsCamera,
+    camera_controller, cursor_grab_system, handle_center_on_mesh, CenterOnMeshEvent, FpsCamera,
 };
 use seaview::app::systems::diagnostics::RenderingDiagnosticsPlugin;
 use seaview::app::systems::network::NetworkMeshPlugin;
-use seaview::app::systems::stl_loader::{StlFilePath, StlLoaderPlugin};
+
 use seaview::lib::coordinates::SourceOrientation;
 use seaview::lib::sequence::{discovery::DiscoverSequenceRequest, SequencePlugin};
 
@@ -63,15 +62,12 @@ fn main() {
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(LogDiagnosticsPlugin::default())
         .add_plugins(RenderingDiagnosticsPlugin)
-        .add_plugins(seaview::lib::parallel_loader::AsyncStlLoaderPlugin)
-        .add_plugins(StlLoaderPlugin)
-        .add_plugins(seaview::lib::gltf_loader::GltfLoaderPlugin)
         .add_plugins(SequencePlugin)
         .add_plugins(NetworkMeshPlugin)
         .add_plugins(BrpExtrasPlugin)
         .add_plugins(SessionPlugin)
         .add_plugins(SeaviewUiPlugin)
-        .insert_resource(StlFilePath(args.path.clone()))
+        .insert_resource(args)
         .insert_resource(source_orientation)
         .insert_resource(network_config)
         .add_event::<CenterOnMeshEvent>()
@@ -149,12 +145,13 @@ fn setup_cursor(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
 }
 
 /// System that handles the input path and decides whether to load a single file or discover a sequence
+/// TODO: Implement actual loading using Bevy's AssetServer
 fn handle_input_path(
     mut commands: Commands,
-    stl_path: Res<StlFilePath>,
+    args: Res<Args>,
     source_orientation: Res<SourceOrientation>,
 ) {
-    if let Some(path) = &stl_path.0 {
+    if let Some(path) = &args.path {
         if path.is_dir() {
             // It's a directory - trigger sequence discovery
             info!("Discovering sequences in directory: {:?}", path);
@@ -164,7 +161,7 @@ fn handle_input_path(
                 source_orientation: *source_orientation,
             });
         } else if path.is_file() {
-            // It's a single file - loader will handle it based on extension
+            // It's a single file - will be loaded when we implement new loading system
             let ext = path
                 .extension()
                 .and_then(|e| e.to_str())
@@ -172,9 +169,11 @@ fn handle_input_path(
                 .unwrap_or_default();
 
             match ext.as_str() {
-                "stl" => info!("Loading single STL file: {:?}", path),
-                "gltf" | "glb" => info!("Loading single glTF/GLB file: {:?}", path),
-                _ => info!("Loading file (unknown format, will try STL): {:?}", path),
+                "glb" | "gltf" => info!(
+                    "Single glTF/GLB file: {:?} (loading not yet implemented)",
+                    path
+                ),
+                _ => info!("Single file: {:?} (loading not yet implemented)", path),
             }
         } else {
             error!("Path does not exist: {:?}", path);

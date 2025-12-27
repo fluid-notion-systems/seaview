@@ -5,9 +5,7 @@
 
 pub mod lib {
     pub mod coordinates;
-    pub mod gltf_loader;
     pub mod network;
-    pub mod parallel_loader;
     pub mod sequence;
     pub mod session;
 }

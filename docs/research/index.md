@@ -31,6 +31,27 @@ Research on implementing multi-format mesh file loading in Bevy, with immediate 
 - Performance considerations
 - **Status**: Research complete, ready for implementation
 
+### [Bevy Asset Loading Research](./bevy_asset_loading.md)
+Comprehensive research on idiomatic mesh loading using Bevy's native asset system for well-behaved, indexed files. Covers:
+
+- Bevy's async, parallel asset loading architecture
+- Loading from arbitrary directories (not just `assets/`)
+- Proper indexed mesh handling (fixes exploded mesh bug)
+- Loading strategies for mesh sequences (preload, streaming, predictive)
+- Reference counting and memory management
+- Migration path from custom loaders to Bevy-native approach
+- **Status**: Research complete, recommended as primary approach
+- **Quick Reference**: See [summary version](./bevy_asset_loading_summary.md) for code snippets
+
+### [Bevy Asset Loading - Quick Reference](./bevy_asset_loading_summary.md)
+Quick reference guide with code patterns for loading glTF/GLB files from arbitrary directories. Includes:
+
+- Working code for proper indexed mesh loading
+- Async loading patterns with `AsyncComputeTaskPool`
+- Sequence loading examples
+- Migration checklist from current implementation
+- **Status**: Ready to implement
+
 ### [Baby Shark Mesh Conversion Research](./baby_shark_mesh_conversion.md)
 Research on using the baby_shark library for converting polygon soup mesh data to indexed format. Covers:
 

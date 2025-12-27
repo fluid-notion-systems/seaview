@@ -9,7 +9,7 @@
 //! - Shift: 10x movement speed boost
 //! - Alt: 0.1x movement speed (precision mode)
 
-use crate::lib::sequence::async_cache::AsyncMeshCache;
+// use crate::lib::sequence::async_cache::AsyncMeshCache;
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
@@ -36,30 +36,18 @@ impl Default for FpsCamera {
 }
 
 /// System that handles centering the camera on the current mesh
+/// TODO: Reimplement after switching to Bevy's asset loading
 pub fn handle_center_on_mesh(
     mut center_events: EventReader<CenterOnMeshEvent>,
-    mut camera_query: Query<(&mut Transform, &mut FpsCamera), (With<Camera3d>, With<FpsCamera>)>,
-    mesh_cache: Res<AsyncMeshCache>,
-    meshes: Res<Assets<Mesh>>,
+    _camera_query: Query<(&mut Transform, &mut FpsCamera), (With<Camera3d>, With<FpsCamera>)>,
+    // mesh_cache: Res<AsyncMeshCache>,
+    _meshes: Res<Assets<Mesh>>,
 ) {
     for _event in center_events.read() {
-        info!("📥 CenterOnMeshEvent received in handler");
-
-        match camera_query.single_mut() {
-            Ok((mut transform, mut fps_camera)) => {
-                info!("✅ Camera query successful");
-                info!("📍 Current camera position: {:?}", transform.translation);
-
-                if let Some(entity) = mesh_cache.current_mesh_entity {
-                    info!("✅ Current mesh entity found: {:?}", entity);
-                    info!("🗂️ Mesh cache has {} entries", mesh_cache.cache.len());
-
-                    if mesh_cache.cache.is_empty() {
-                        warn!("❌ Mesh cache is empty - no meshes loaded yet");
-                        return;
-                    }
-
-                    if let Some((path, mesh_handle)) = mesh_cache.cache.iter().next() {
+        warn!("CenterOnMeshEvent received but handler is disabled - needs reimplementation with Bevy asset loading");
+        // TODO: Reimplement mesh centering logic
+        /*
+        if let Some((path, mesh_handle)) = mesh_cache.cache.iter().next() {
                         info!("📁 Using mesh from path: {:?}", path);
                         info!("🔗 Mesh handle: {:?}", mesh_handle);
 
@@ -138,11 +126,12 @@ pub fn handle_center_on_mesh(
                 error!("❌ Camera query failed: {:?}", e);
             }
         }
+        */
     }
 }
 
 /// Calculate mesh centroid using random sampling for performance
-fn calculate_mesh_centroid(mesh: &Mesh) -> Vec3 {
+fn _calculate_mesh_centroid(mesh: &Mesh) -> Vec3 {
     if let Some(positions) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
         match positions {
             bevy::render::mesh::VertexAttributeValues::Float32x3(vertices) => {
@@ -178,7 +167,7 @@ fn calculate_mesh_centroid(mesh: &Mesh) -> Vec3 {
 }
 
 /// Calculate approximate mesh bounds radius from centroid
-fn calculate_mesh_bounds_radius(mesh: &Mesh, centroid: Vec3) -> f32 {
+fn _calculate_mesh_bounds_radius(mesh: &Mesh, centroid: Vec3) -> f32 {
     if let Some(positions) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
         match positions {
             bevy::render::mesh::VertexAttributeValues::Float32x3(vertices) => {
@@ -208,7 +197,10 @@ fn calculate_mesh_bounds_radius(mesh: &Mesh, centroid: Vec3) -> f32 {
 }
 
 /// Debug system to log mesh cache status
-pub fn debug_mesh_cache_status(mesh_cache: Res<AsyncMeshCache>, meshes: Res<Assets<Mesh>>) {
+/// TODO: Remove or reimplement after switching to Bevy asset loading
+#[allow(dead_code)]
+pub fn debug_mesh_cache_status(/* mesh_cache: Res<AsyncMeshCache>, */ meshes: Res<Assets<Mesh>>,) {
+    /*
     if mesh_cache.is_changed() {
         debug!("🔍 MESH CACHE STATUS:");
         debug!(
@@ -225,6 +217,8 @@ pub fn debug_mesh_cache_status(mesh_cache: Res<AsyncMeshCache>, meshes: Res<Asse
             );
         }
     }
+    */
+    let _ = meshes; // Silence unused warning
 }
 
 /// System that provides fps-style camera controls
