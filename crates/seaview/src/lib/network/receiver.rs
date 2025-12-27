@@ -1,5 +1,7 @@
 //! Network receiver for mesh data
 
+use baby_shark::mesh::Mesh as BabySharkMesh;
+
 use super::protocol::{MeshData, MessageHeader};
 use std::io::Write;
 use std::net::{TcpListener, TcpStream};
@@ -31,16 +33,16 @@ impl From<(MessageHeader, MeshData)> for ReceivedMesh {
     }
 }
 
-impl From<ReceivedMesh> for baby_shark::mesh::Mesh<f32> {
+impl From<ReceivedMesh> for BabySharkMesh<f32> {
     fn from(received_mesh: ReceivedMesh) -> Self {
-        baby_shark::mesh::Mesh::from_iter(received_mesh.vertices.into_iter())
+        BabySharkMesh::from_iter(received_mesh.vertices.into_iter())
     }
 }
 
-impl From<&ReceivedMesh> for baby_shark::mesh::Mesh<f32> {
+impl From<&ReceivedMesh> for BabySharkMesh<f32> {
     fn from(received_mesh: &ReceivedMesh) -> Self {
         //FIXME: I dont like this call to copied(), we'll look into zero-copy later
-        baby_shark::mesh::Mesh::from_iter(received_mesh.vertices.iter().copied())
+        BabySharkMesh::from_iter(received_mesh.vertices.iter().copied())
     }
 }
 

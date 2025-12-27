@@ -7,6 +7,7 @@ use bevy_egui::{egui, EguiContexts};
 
 use crate::app::systems::camera::CenterOnMeshEvent;
 use crate::app::ui::state::UiState;
+use crate::lib::sequence::{SequenceAssets, SequenceManager};
 
 /// System that renders the playback controls panel
 pub fn playback_controls_system(
@@ -14,12 +15,24 @@ pub fn playback_controls_system(
     mut ui_state: ResMut<UiState>,
     mut center_events: EventWriter<CenterOnMeshEvent>,
     time: Res<Time>,
+    sequence_manager: Res<SequenceManager>,
+    sequence_assets: Res<SequenceAssets>,
 ) {
     if !ui_state.show_playback_controls {
         return;
     }
 
     let ctx = contexts.ctx_mut().unwrap();
+
+    // Sync UI state with SequenceManager
+    if let Some(sequence) = sequence_manager.current_sequence() {
+        ui_state.playback.total_frames = sequence.frame_count();
+        ui_state.playback.current_frame = sequence_manager.current_frame;
+        ui_state.playback.is_playing = sequence_manager.is_playing;
+    }
+
+    // Update loading state from assets
+    ui_state.loading.update_from_assets(&sequence_assets);
 
     let panel_height = ui_state.panel_sizes.playback_panel_height;
 
@@ -31,6 +44,27 @@ pub fn playback_controls_system(
             ui.add_space(5.0);
 
             ui.vertical(|ui| {
+                // Loading progress bar (shown when loading)
+                if ui_state.loading.is_loading {
+                    ui.horizontal(|ui| {
+                        ui.add_space(10.0);
+
+                        let progress = ui_state.loading.progress();
+                        let progress_bar = egui::ProgressBar::new(progress)
+                            .text(format!(
+                                "Loading: {}/{} frames ({:.0}%)",
+                                ui_state.loading.loaded_frames,
+                                ui_state.loading.total_frames,
+                                progress * 100.0
+                            ))
+                            .animate(true);
+                        ui.add(progress_bar);
+
+                        ui.add_space(10.0);
+                    });
+                    ui.add_space(5.0);
+                }
+
                 // Playback controls row
                 ui.horizontal(|ui| {
                     ui.add_space(10.0);

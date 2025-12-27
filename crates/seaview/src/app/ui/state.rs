@@ -6,6 +6,8 @@
 use bevy::prelude::*;
 use uuid::Uuid;
 
+use crate::lib::sequence::SequenceAssets;
+
 /// Global UI state resource
 #[derive(Resource, Default)]
 pub struct UiState {
@@ -23,6 +25,9 @@ pub struct UiState {
 
     /// Current playback state
     pub playback: PlaybackState,
+
+    /// Current loading state
+    pub loading: LoadingState,
 
     /// UI panel sizes for persistence
     pub panel_sizes: PanelSizes,
@@ -48,6 +53,45 @@ pub struct PlaybackState {
 
     /// Whether to loop at the end
     pub loop_enabled: bool,
+}
+
+/// Loading state for asset loading progress
+#[derive(Default, Debug, Clone)]
+pub struct LoadingState {
+    /// Whether loading is in progress
+    pub is_loading: bool,
+
+    /// Number of frames loaded
+    pub loaded_frames: usize,
+
+    /// Total frames to load
+    pub total_frames: usize,
+
+    /// Name of the sequence being loaded
+    pub sequence_name: Option<String>,
+}
+
+impl LoadingState {
+    /// Get loading progress as a percentage (0.0 to 1.0)
+    pub fn progress(&self) -> f32 {
+        if self.total_frames == 0 {
+            0.0
+        } else {
+            self.loaded_frames as f32 / self.total_frames as f32
+        }
+    }
+
+    /// Check if loading is complete
+    pub fn is_complete(&self) -> bool {
+        self.total_frames > 0 && self.loaded_frames >= self.total_frames
+    }
+
+    /// Update from SequenceAssets resource
+    pub fn update_from_assets(&mut self, assets: &SequenceAssets) {
+        self.is_loading = assets.loading;
+        self.loaded_frames = assets.loaded_count;
+        self.total_frames = assets.total_frames;
+    }
 }
 
 /// Sizes of UI panels for layout persistence
@@ -99,9 +143,10 @@ impl UiState {
             show_playback_controls: true,
             playback: PlaybackState {
                 speed: 1.0,
-                total_frames: 100, // Mock data for testing
+                total_frames: 0,
                 ..Default::default()
             },
+            loading: LoadingState::default(),
             ..Default::default()
         }
     }

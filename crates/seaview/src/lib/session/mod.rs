@@ -24,14 +24,9 @@ impl Plugin for SessionPlugin {
             .add_event::<SessionUpdatedEvent>()
             .add_event::<SessionDeletedEvent>()
             .add_event::<FrameReceivedEvent>()
-            .add_event::<crate::lib::network::NetworkMeshReceived>()
             .add_systems(
                 Update,
-                (
-                    handle_create_session_requests,
-                    bridge_network_to_session,
-                    update_session_frame_counts,
-                ),
+                (handle_create_session_requests, update_session_frame_counts),
             );
     }
 }
@@ -102,61 +97,61 @@ fn handle_create_session_requests(
 }
 
 /// System that bridges NetworkMeshReceived events to our session system
-fn bridge_network_to_session(
-    mut network_events: EventReader<crate::lib::network::NetworkMeshReceived>,
-    mut session_manager: ResMut<SessionManager>,
-    mut frame_events: EventWriter<FrameReceivedEvent>,
-    mut commands: Commands,
-    mesh_query: Query<&Mesh3d>,
-    meshes: Res<Assets<Mesh>>,
-    network_config: Res<crate::lib::network::NetworkConfig>,
-) {
-    for event in network_events.read() {
-        // Find the session associated with the network port
-        let session_id = session_manager
-            .find_session_by_port(network_config.port)
-            .or_else(|| {
-                // Auto-create a session if none exists for this port
-                let name = format!("Network Stream (Port {})", network_config.port);
-                session_manager
-                    .create_network_session(&name, network_config.port)
-                    .ok()
-            });
+// fn bridge_network_to_session(
+//     mut network_events: EventReader<crate::lib::network::NetworkMeshReceived>,
+//     mut session_manager: ResMut<SessionManager>,
+//     mut frame_events: EventWriter<FrameReceivedEvent>,
+//     mut commands: Commands,
+//     mesh_query: Query<&Mesh3d>,
+//     meshes: Res<Assets<Mesh>>,
+//     network_config: Res<crate::lib::network::NetworkConfig>,
+// ) {
+//     for event in network_events.read() {
+//         // Find the session associated with the network port
+//         let session_id = session_manager
+//             .find_session_by_port(network_config.port)
+//             .or_else(|| {
+//                 // Auto-create a session if none exists for this port
+//                 let name = format!("Network Stream (Port {})", network_config.port);
+//                 session_manager
+//                     .create_network_session(&name, network_config.port)
+//                     .ok()
+//             });
 
-        if let Some(session_id) = session_id {
-            // Get the mesh from the entity that was already spawned
-            if let Ok(mesh_handle) = mesh_query.get(event.entity) {
-                if let Some(mesh) = meshes.get(&mesh_handle.0) {
-                    // Add the mesh to the session
-                    let frame_index = session_manager
-                        .add_mesh_to_session(session_id, mesh.clone())
-                        .unwrap_or(0);
+//         if let Some(session_id) = session_id {
+//             // Get the mesh from the entity that was already spawned
+//             if let Ok(mesh_handle) = mesh_query.get(event.entity) {
+//                 if let Some(mesh) = meshes.get(&mesh_handle.0) {
+//                     // Add the mesh to the session
+//                     let frame_index = session_manager
+//                         .add_mesh_to_session(session_id, mesh.clone())
+//                         .unwrap_or(0);
 
-                    // Add our session marker to the existing entity
-                    commands.entity(event.entity).insert(SessionMeshMarker {
-                        session_id,
-                        frame_index,
-                    });
+//                     // Add our session marker to the existing entity
+//                     commands.entity(event.entity).insert(SessionMeshMarker {
+//                         session_id,
+//                         frame_index,
+//                     });
 
-                    frame_events.write(FrameReceivedEvent {
-                        session_id,
-                        frame_index,
-                    });
+//                     frame_events.write(FrameReceivedEvent {
+//                         session_id,
+//                         frame_index,
+//                     });
 
-                    info!(
-                        "Added mesh to session {} (frame {}) from network",
-                        session_id, frame_index
-                    );
-                }
-            }
-        } else {
-            warn!(
-                "No session found for port {} and failed to auto-create",
-                network_config.port
-            );
-        }
-    }
-}
+//                     info!(
+//                         "Added mesh to session {} (frame {}) from network",
+//                         session_id, frame_index
+//                     );
+//                 }
+//             }
+//         } else {
+//             warn!(
+//                 "No session found for port {} and failed to auto-create",
+//                 network_config.port
+//             );
+//         }
+//     }
+// }
 
 /// Component marker for meshes that belong to a session
 #[derive(Component)]

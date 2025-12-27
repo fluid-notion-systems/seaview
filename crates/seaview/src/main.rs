@@ -9,7 +9,6 @@ use seaview::app::systems::camera::{
     camera_controller, cursor_grab_system, handle_center_on_mesh, CenterOnMeshEvent, FpsCamera,
 };
 use seaview::app::systems::diagnostics::RenderingDiagnosticsPlugin;
-use seaview::app::systems::network::NetworkMeshPlugin;
 
 use seaview::lib::coordinates::SourceOrientation;
 use seaview::lib::sequence::{discovery::DiscoverSequenceRequest, SequencePlugin};
@@ -39,37 +38,17 @@ fn main() {
         }
     };
 
-    // Configure network receiving
-    let network_config = if args.network_port.is_some() {
-        seaview::lib::network::NetworkConfig {
-            enabled: true,
-            port: args.network_port.unwrap_or(9877),
-            max_message_size_mb: 100,
-        }
-    } else {
-        seaview::lib::network::NetworkConfig::default()
-    };
-
-    if network_config.enabled {
-        info!(
-            "Network mesh receiving enabled on port {}",
-            network_config.port
-        );
-    }
-
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(LogDiagnosticsPlugin::default())
         .add_plugins(RenderingDiagnosticsPlugin)
         .add_plugins(SequencePlugin)
-        .add_plugins(NetworkMeshPlugin)
         .add_plugins(BrpExtrasPlugin)
         .add_plugins(SessionPlugin)
         .add_plugins(SeaviewUiPlugin)
         .insert_resource(args)
         .insert_resource(source_orientation)
-        .insert_resource(network_config)
         .add_event::<CenterOnMeshEvent>()
         .add_systems(Startup, (setup, handle_input_path, setup_cursor))
         .add_systems(

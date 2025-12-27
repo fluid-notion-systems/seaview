@@ -1,6 +1,6 @@
 //! Sequence discovery module for finding mesh file sequences
 
-use super::{FrameInfo, Sequence, SequenceEvent, SequenceManager};
+use super::{loader::LoadSequenceRequest, FrameInfo, Sequence, SequenceEvent, SequenceManager};
 use bevy::prelude::*;
 use regex::Regex;
 use std::collections::HashMap;
@@ -84,6 +84,7 @@ fn handle_discovery_requests(
     query: Query<(Entity, &DiscoverSequenceRequest)>,
     mut sequence_manager: ResMut<SequenceManager>,
     mut events: EventWriter<SequenceEvent>,
+    mut load_events: EventWriter<LoadSequenceRequest>,
     patterns: Option<Res<SequencePatterns>>,
 ) {
     // Use default patterns if none provided
@@ -107,6 +108,19 @@ fn handle_discovery_requests(
                 if let Some(sequence) = sequences.into_iter().next() {
                     let frame_count = sequence.frame_count();
                     let sequence_name = sequence.name.clone();
+
+                    // Trigger mesh loading via the loader system
+                    let frame_paths: Vec<_> =
+                        sequence.frames.iter().map(|f| f.path.clone()).collect();
+                    if !frame_paths.is_empty() {
+                        info!(
+                            "Triggering load of {} mesh frames for sequence '{}'",
+                            frame_paths.len(),
+                            sequence_name
+                        );
+                        load_events.write(LoadSequenceRequest { frame_paths });
+                    }
+
                     sequence_manager.load_sequence(sequence);
                     events.write(SequenceEvent::SequenceLoaded(sequence_name));
                     events.write(SequenceEvent::DiscoveryCompleted(frame_count));

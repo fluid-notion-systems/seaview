@@ -4,10 +4,14 @@
 //! sequences of mesh files (e.g., simulation timesteps).
 
 pub mod discovery;
+pub mod loader;
 pub mod playback;
 
 use bevy::prelude::*;
 use std::path::PathBuf;
+
+// Re-export commonly used types from loader
+pub use loader::{FrameLoadedEvent, LoadSequenceRequest, LoadingStats, SequenceAssets};
 
 /// Plugin for mesh sequence management
 pub struct SequencePlugin;
@@ -17,6 +21,7 @@ impl Plugin for SequencePlugin {
         app.add_plugins((
             discovery::SequenceDiscoveryPlugin,
             playback::SequencePlaybackPlugin,
+            loader::SequenceLoaderPlugin,
         ))
         .init_resource::<SequenceManager>()
         .add_event::<SequenceEvent>();
