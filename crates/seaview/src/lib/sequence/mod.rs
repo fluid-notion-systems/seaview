@@ -24,7 +24,34 @@ impl Plugin for SequencePlugin {
             loader::SequenceLoaderPlugin,
         ))
         .init_resource::<SequenceManager>()
-        .add_event::<SequenceEvent>();
+        .add_event::<SequenceEvent>()
+        .add_systems(Update, sync_sequence_manager_with_events);
+    }
+}
+
+/// System that syncs SequenceManager state when receiving SequenceEvents
+fn sync_sequence_manager_with_events(
+    mut sequence_manager: ResMut<SequenceManager>,
+    mut sequence_events: EventReader<SequenceEvent>,
+) {
+    for event in sequence_events.read() {
+        match event {
+            SequenceEvent::FrameChanged(frame_index) => {
+                // Update the SequenceManager's current frame to match the event
+                if sequence_manager.jump_to_frame(*frame_index) {
+                    debug!("SequenceManager synced to frame {}", frame_index);
+                }
+            }
+            SequenceEvent::PlaybackStarted => {
+                sequence_manager.is_playing = true;
+                info!("SequenceManager playback started");
+            }
+            SequenceEvent::PlaybackStopped => {
+                sequence_manager.is_playing = false;
+                info!("SequenceManager playback stopped");
+            }
+            _ => {}
+        }
     }
 }
 

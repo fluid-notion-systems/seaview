@@ -7,13 +7,14 @@ use bevy_egui::{egui, EguiContexts};
 
 use crate::app::systems::camera::CenterOnMeshEvent;
 use crate::app::ui::state::UiState;
-use crate::lib::sequence::{SequenceAssets, SequenceManager};
+use crate::lib::sequence::{SequenceAssets, SequenceEvent, SequenceManager};
 
 /// System that renders the playback controls panel
 pub fn playback_controls_system(
     mut contexts: EguiContexts,
     mut ui_state: ResMut<UiState>,
     mut center_events: EventWriter<CenterOnMeshEvent>,
+    mut sequence_events: EventWriter<SequenceEvent>,
     time: Res<Time>,
     sequence_manager: Res<SequenceManager>,
     sequence_assets: Res<SequenceAssets>,
@@ -72,6 +73,7 @@ pub fn playback_controls_system(
                     // Previous frame button
                     if ui.button("⏮").on_hover_text("Previous frame").clicked() {
                         ui_state.previous_frame();
+                        sequence_events.write(SequenceEvent::FrameChanged(ui_state.playback.current_frame));
                     }
 
                     // Play/Pause button
@@ -90,11 +92,17 @@ pub fn playback_controls_system(
                         .clicked()
                     {
                         ui_state.toggle_playback();
+                        if ui_state.playback.is_playing {
+                            sequence_events.write(SequenceEvent::PlaybackStarted);
+                        } else {
+                            sequence_events.write(SequenceEvent::PlaybackStopped);
+                        }
                     }
 
                     // Next frame button
                     if ui.button("⏭").on_hover_text("Next frame").clicked() {
                         ui_state.next_frame();
+                        sequence_events.write(SequenceEvent::FrameChanged(ui_state.playback.current_frame));
                     }
 
                     ui.separator();
@@ -153,12 +161,11 @@ pub fn playback_controls_system(
 
                 ui.add_space(5.0);
 
-                // Timeline scrubber
+                // Timeline scrubber (full width)
                 ui.horizontal(|ui| {
-                    ui.add_space(10.0);
-
                     let total_frames = ui_state.playback.total_frames.saturating_sub(1);
-                    let timeline_response = ui.add(
+                    let timeline_response = ui.add_sized(
+                        [ui.available_width(), 20.0],
                         egui::Slider::new(&mut ui_state.playback.current_frame, 0..=total_frames)
                             .show_value(false),
                     );
@@ -166,9 +173,8 @@ pub fn playback_controls_system(
                     if timeline_response.changed() {
                         let current_frame = ui_state.playback.current_frame;
                         ui_state.seek_to_frame(current_frame);
+                        sequence_events.write(SequenceEvent::FrameChanged(current_frame));
                     }
-
-                    ui.add_space(10.0);
                 });
 
                 // Progress bar visualization
@@ -225,6 +231,7 @@ pub fn playback_controls_system(
 /// System that handles automatic playback advancement
 pub fn playback_update_system(
     mut ui_state: ResMut<UiState>,
+    mut sequence_events: EventWriter<SequenceEvent>,
     time: Res<Time>,
     mut last_update: Local<f32>,
 ) {
@@ -240,5 +247,11 @@ pub fn playback_update_system(
     if *last_update >= frame_duration {
         *last_update -= frame_duration;
         ui_state.next_frame();
+        sequence_events.write(SequenceEvent::FrameChanged(ui_state.playback.current_frame));
+
+        // Stop playback if we reached the end and loop is disabled
+        if !ui_state.playback.is_playing {
+            sequence_events.write(SequenceEvent::PlaybackStopped);
+        }
     }
 }
