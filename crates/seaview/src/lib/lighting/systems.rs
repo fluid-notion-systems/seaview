@@ -5,7 +5,7 @@
 
 use bevy::prelude::*;
 
-use super::{NightLight, NightLightMarker, NightLightingConfig};
+use super::{GlobalLight, NightLight, NightLightMarker, NightLightingConfig};
 
 /// System that updates night lights based on configuration changes
 ///
@@ -231,5 +231,33 @@ fn update_markers(
                 ));
             }
         }
+    }
+}
+
+/// System that toggles global scene lights (directional, point, ambient) based on config
+pub fn toggle_global_lights(
+    config: Res<NightLightingConfig>,
+    mut global_lights: Query<&mut Visibility, With<GlobalLight>>,
+    mut ambient: ResMut<AmbientLight>,
+) {
+    if !config.is_changed() {
+        return;
+    }
+
+    let visibility = if config.global_lighting_enabled {
+        Visibility::Inherited
+    } else {
+        Visibility::Hidden
+    };
+
+    for mut vis in global_lights.iter_mut() {
+        *vis = visibility;
+    }
+
+    // Also toggle ambient light
+    if config.global_lighting_enabled {
+        ambient.brightness = 500.0;
+    } else {
+        ambient.brightness = 0.0;
     }
 }

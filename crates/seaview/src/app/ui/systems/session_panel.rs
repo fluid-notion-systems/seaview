@@ -248,15 +248,24 @@ fn render_session_item(
 
 /// Render lighting rig controls
 fn render_lighting_rig_controls(ui: &mut egui::Ui, config: &mut NightLightingConfig) {
-    // Enable/Disable toggle
+    // Global lighting toggle
     ui.horizontal(|ui| {
-        ui.label("Enabled:");
+        ui.label("Global Lights:");
+        ui.checkbox(&mut config.global_lighting_enabled, "");
+    });
+
+    ui.add_space(5.0);
+    ui.separator();
+
+    // Spot lighting enable/disable toggle
+    ui.horizontal(|ui| {
+        ui.label("Spot Lights:");
         ui.checkbox(&mut config.enabled, "");
     });
 
     ui.add_space(5.0);
 
-    // Only show controls if enabled
+    // Only show spot light controls if enabled
     if !config.enabled {
         ui.label(egui::RichText::new("Enable to configure").color(egui::Color32::GRAY));
         return;

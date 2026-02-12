@@ -3,6 +3,7 @@ use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::pbr::{DefaultOpaqueRendererMethod, ScreenSpaceReflections};
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
+use seaview::lib::lighting::GlobalLight;
 use seaview::{NightLightingPlugin, SeaviewUiPlugin, SessionPlugin};
 
 use seaview::app::cli::Args;
@@ -209,6 +210,7 @@ fn setup(
             ..default()
         },
         Transform::from_xyz(0.0, 1.0, 0.0).looking_at(Vec3::new(-0.3, -1.0, -0.5), Vec3::Y),
+        GlobalLight,
     ));
 
     // Add a point light from above
@@ -220,6 +222,7 @@ fn setup(
             ..default()
         },
         Transform::from_xyz(50.0, 150.0, 50.0),
+        GlobalLight,
     ));
 
     // Add another point light from a different angle for better surface visibility
@@ -231,6 +234,7 @@ fn setup(
             ..default()
         },
         Transform::from_xyz(-50.0, 100.0, -50.0),
+        GlobalLight,
     ));
 
     // Add ambient light for overall brightness

@@ -12,6 +12,11 @@ pub mod systems;
 
 pub use placement::PlacementAlgorithm;
 
+/// Marker component for global scene lights (directional, point, ambient)
+/// so they can be toggled on/off from the UI.
+#[derive(Component)]
+pub struct GlobalLight;
+
 /// Resource that configures the night lighting system
 #[derive(Resource, Clone, Debug, Serialize, Deserialize)]
 pub struct NightLightingConfig {
@@ -29,6 +34,9 @@ pub struct NightLightingConfig {
 
     /// Whether the lighting system is enabled
     pub enabled: bool,
+
+    /// Whether global scene lights (directional + point + ambient) are enabled
+    pub global_lighting_enabled: bool,
 
     /// Light intensity
     pub intensity: f32,
@@ -54,6 +62,7 @@ impl Default for NightLightingConfig {
             cone_angle: 60.0,
             placement_algorithm: PlacementAlgorithm::UniformGrid,
             enabled: true,
+            global_lighting_enabled: true,
             intensity: 1000.0,
             color: Color::srgb(1.0, 0.95, 0.9), // Warm white
             range: 200.0,
@@ -83,6 +92,12 @@ pub struct NightLightingPlugin;
 impl Plugin for NightLightingPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(NightLightingConfig::default())
-            .add_systems(Update, systems::update_night_lights);
+            .add_systems(
+                Update,
+                (
+                    systems::update_night_lights,
+                    systems::toggle_global_lights,
+                ),
+            );
     }
 }
