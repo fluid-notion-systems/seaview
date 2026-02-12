@@ -6,6 +6,7 @@
 pub mod lib {
     pub mod coordinates;
     pub mod lighting;
+    pub mod mesh_info;
     // pub mod network;
     pub mod sequence;
     pub mod session;
@@ -22,6 +23,7 @@ pub mod app {
 pub use app::ui::SeaviewUiPlugin;
 pub use lib::coordinates;
 pub use lib::lighting::{self, NightLightingConfig, NightLightingPlugin};
+pub use lib::mesh_info::{MeshDimensions, MeshInfoPlugin, RecomputeMeshBounds};
 // pub use lib::network::{self, MeshReceiver, ReceivedMesh};
 pub use lib::sequence;
 pub use lib::session::{self, Session, SessionManager, SessionPlugin};

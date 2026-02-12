@@ -4,7 +4,7 @@ use bevy::pbr::{DefaultOpaqueRendererMethod, ScreenSpaceReflections};
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use seaview::lib::lighting::GlobalLight;
-use seaview::{NightLightingPlugin, SeaviewUiPlugin, SessionPlugin};
+use seaview::{MeshDimensions, MeshInfoPlugin, NightLightingPlugin, SeaviewUiPlugin, SessionPlugin};
 
 use seaview::app::cli::Args;
 use seaview::app::systems::camera::{
@@ -138,6 +138,7 @@ fn main() {
         .add_plugins(SessionPlugin)
         .add_plugins(SeaviewUiPlugin)
         .add_plugins(NightLightingPlugin)
+        .add_plugins(MeshInfoPlugin)
         .insert_resource(args)
         .insert_resource(source_orientation)
         .insert_resource(settings_resource)
@@ -189,6 +190,20 @@ fn setup(
         Msaa::Off,
         ScreenSpaceReflections::default(),
     ));
+
+    // Apply cached mesh bounds from seaview.toml
+    if let Some(ref mesh_bounds) = settings_res.settings.mesh {
+        let mut dims = MeshDimensions::from_settings(mesh_bounds);
+        info!(
+            "Loaded cached mesh bounds from seaview.toml: {:.2} × {:.2} × {:.2} m",
+            dims.dimensions.unwrap().x,
+            dims.dimensions.unwrap().y,
+            dims.dimensions.unwrap().z,
+        );
+        // Mark as computed so auto-compute doesn't overwrite until recompute is requested
+        dims.computed = true;
+        commands.insert_resource(dims);
+    }
 
     // Apply playback settings from seaview.toml
     if let Some(ref pb) = settings_res.settings.playback {

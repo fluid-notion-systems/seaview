@@ -88,6 +88,18 @@ impl Default for PlaybackSettings {
     }
 }
 
+/// Cached mesh bounding-box dimensions (in metres).
+/// Stored so the UI can show dimensions immediately without re-scanning vertices.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MeshBoundsSettings {
+    /// Axis-aligned minimum corner [x, y, z]
+    pub min: [f32; 3],
+    /// Axis-aligned maximum corner [x, y, z]
+    pub max: [f32; 3],
+    /// Dimensions (max - min) per axis [x, y, z]
+    pub dimensions: [f32; 3],
+}
+
 /// Top-level settings struct, serialized as seaview.toml
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Settings {
@@ -97,6 +109,8 @@ pub struct Settings {
     pub sequence: Option<SequenceSettings>,
     /// Playback settings
     pub playback: Option<PlaybackSettings>,
+    /// Cached mesh bounding-box (computed on first load)
+    pub mesh: Option<MeshBoundsSettings>,
 }
 
 impl Settings {
@@ -286,6 +300,7 @@ mod tests {
                 speed: Some(1.5),
                 loop_enabled: Some(true),
             }),
+            mesh: None,
         };
 
         let toml_str = toml::to_string_pretty(&settings).unwrap();
@@ -331,6 +346,7 @@ rotation = [0.0, 45.0, 0.0]
                 speed: Some(2.0),
                 loop_enabled: Some(false),
             }),
+            mesh: None,
         };
 
         settings.save_to_dir(&dir).unwrap();

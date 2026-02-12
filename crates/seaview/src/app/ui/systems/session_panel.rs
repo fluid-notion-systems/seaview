@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::app::ui::state::{AlphaModeConfig, DeleteSessionEvent, MaterialConfig, SwitchSessionEvent, UiState};
 use crate::lib::lighting::{NightLightingConfig, PlacementAlgorithm};
+use crate::lib::mesh_info::{MeshDimensions, RecomputeMeshBounds};
 use crate::lib::session::SessionManager;
 
 /// System that renders the session management panel
@@ -20,6 +21,8 @@ pub fn session_panel_system(
     session_manager: Res<SessionManager>,
     mut lighting_config: ResMut<NightLightingConfig>,
     mut material_config: ResMut<MaterialConfig>,
+    mesh_dims: Res<MeshDimensions>,
+    mut recompute_events: EventWriter<RecomputeMeshBounds>,
 ) {
     if !ui_state.show_session_panel {
         debug!("Session panel is hidden");
@@ -142,6 +145,52 @@ pub fn session_panel_system(
 
                         ui.add_space(5.0);
                     }
+
+                    // Mesh Info Section (Collapsible)
+                    egui::CollapsingHeader::new("Mesh Info")
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            if let Some(dims) = mesh_dims.dimensions {
+                                ui.horizontal(|ui| {
+                                    ui.label("Dimensions:");
+                                });
+                                egui::Grid::new("mesh_dims_grid")
+                                    .num_columns(2)
+                                    .spacing([8.0, 4.0])
+                                    .show(ui, |ui| {
+                                        ui.label("X:");
+                                        ui.label(format!("{:.2} m", dims.x));
+                                        ui.end_row();
+                                        ui.label("Y:");
+                                        ui.label(format!("{:.2} m", dims.y));
+                                        ui.end_row();
+                                        ui.label("Z:");
+                                        ui.label(format!("{:.2} m", dims.z));
+                                        ui.end_row();
+                                    });
+
+                                if let (Some(mn), Some(mx)) = (mesh_dims.min, mesh_dims.max) {
+                                    ui.add_space(4.0);
+                                    ui.horizontal(|ui| {
+                                        ui.label("Min:");
+                                        ui.label(format!("({:.1}, {:.1}, {:.1})", mn.x, mn.y, mn.z));
+                                    });
+                                    ui.horizontal(|ui| {
+                                        ui.label("Max:");
+                                        ui.label(format!("({:.1}, {:.1}, {:.1})", mx.x, mx.y, mx.z));
+                                    });
+                                }
+                            } else {
+                                ui.label("No mesh loaded");
+                            }
+
+                            ui.add_space(4.0);
+                            if ui.button("⟳ Recompute").clicked() {
+                                recompute_events.write(RecomputeMeshBounds);
+                            }
+                        });
+
+                    ui.add_space(5.0);
 
                     // Lighting Rig Section (Collapsible)
                     egui::CollapsingHeader::new("Lighting Rig")
