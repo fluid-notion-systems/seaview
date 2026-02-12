@@ -150,14 +150,8 @@ fn update_light_transform(
 fn calculate_light_transform(pos: Vec2, height: f32, _cone_angle: f32) -> Transform {
     let translation = Vec3::new(pos.x, height, pos.y);
 
-    // Point straight down (negative Y axis)
-    let rotation = Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2);
-
-    Transform {
-        translation,
-        rotation,
-        scale: Vec3::ONE,
-    }
+    // Point straight down — looking_at a point directly below
+    Transform::from_translation(translation).looking_at(Vec3::new(pos.x, 0.0, pos.y), Vec3::Z)
 }
 
 /// Spawn a marker sphere at the light position
