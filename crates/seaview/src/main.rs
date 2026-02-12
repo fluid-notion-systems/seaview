@@ -2,7 +2,7 @@ use bevy::asset::io::AssetSourceBuilder;
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::pbr::{DefaultOpaqueRendererMethod, ScreenSpaceReflections};
 use bevy::prelude::*;
-use bevy::window::{CursorGrabMode, PrimaryWindow};
+use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 use seaview::lib::lighting::GlobalLight;
 use seaview::{MeshDimensions, MeshInfoPlugin, NightLightingPlugin, SeaviewUiPlugin, SessionPlugin};
 
@@ -142,8 +142,8 @@ fn main() {
         .insert_resource(args)
         .insert_resource(source_orientation)
         .insert_resource(settings_resource)
-        .add_event::<CenterOnMeshEvent>()
-        .add_event::<SaveViewEvent>()
+        .add_message::<CenterOnMeshEvent>()
+        .add_message::<SaveViewEvent>()
         .add_systems(Startup, (setup, handle_input_path, setup_cursor))
         .add_systems(
             Update,
@@ -253,7 +253,7 @@ fn setup(
     ));
 
     // Add ambient light for overall brightness
-    commands.insert_resource(AmbientLight {
+    commands.insert_resource(GlobalAmbientLight {
         color: Color::WHITE,
         brightness: 500.0,
         ..default()
@@ -261,16 +261,16 @@ fn setup(
 }
 
 /// System to ensure cursor is visible on startup
-fn setup_cursor(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
-    if let Ok(mut window) = windows.single_mut() {
-        window.cursor_options.visible = true;
-        window.cursor_options.grab_mode = CursorGrabMode::None;
+fn setup_cursor(mut cursor_query: Query<&mut CursorOptions, With<PrimaryWindow>>) {
+    if let Ok(mut cursor) = cursor_query.single_mut() {
+        cursor.visible = true;
+        cursor.grab_mode = CursorGrabMode::None;
     }
 }
 
 /// System that handles save view requests
 fn handle_save_view(
-    mut save_events: EventReader<SaveViewEvent>,
+    mut save_events: MessageReader<SaveViewEvent>,
     mut settings_res: ResMut<SettingsResource>,
     camera_query: Query<&Transform, (With<Camera3d>, With<FpsCamera>)>,
     ui_state: Res<seaview::app::ui::state::UiState>,
@@ -309,7 +309,7 @@ fn handle_input_path(
     mut commands: Commands,
     args: Res<Args>,
     source_orientation: Res<SourceOrientation>,
-    mut load_events: EventWriter<LoadSequenceRequest>,
+    mut load_events: MessageWriter<LoadSequenceRequest>,
 ) {
     if let Some(path) = &args.path {
         if path.is_dir() {

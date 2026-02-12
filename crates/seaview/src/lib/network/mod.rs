@@ -29,7 +29,7 @@ impl Default for NetworkConfig {
 }
 
 /// Event emitted when a new mesh is received over the network
-#[derive(Event, Debug)]
+#[derive(Message, Debug)]
 pub struct NetworkMeshReceived {
     pub entity: Entity,
     pub simulation_uuid: String,

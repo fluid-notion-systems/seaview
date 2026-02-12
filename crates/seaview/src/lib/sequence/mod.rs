@@ -24,7 +24,7 @@ impl Plugin for SequencePlugin {
             loader::SequenceLoaderPlugin,
         ))
         .init_resource::<SequenceManager>()
-        .add_event::<SequenceEvent>()
+        .add_message::<SequenceEvent>()
         .add_systems(Update, sync_sequence_manager_with_events);
     }
 }
@@ -32,7 +32,7 @@ impl Plugin for SequencePlugin {
 /// System that syncs SequenceManager state when receiving SequenceEvents
 fn sync_sequence_manager_with_events(
     mut sequence_manager: ResMut<SequenceManager>,
-    mut sequence_events: EventReader<SequenceEvent>,
+    mut sequence_events: MessageReader<SequenceEvent>,
 ) {
     for event in sequence_events.read() {
         match event {
@@ -251,7 +251,7 @@ impl FrameInfo {
 }
 
 /// Events related to sequence operations
-#[derive(Event, Debug)]
+#[derive(Message, Debug)]
 pub enum SequenceEvent {
     /// A new sequence was loaded
     #[allow(dead_code)]

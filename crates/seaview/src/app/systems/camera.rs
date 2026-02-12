@@ -12,10 +12,10 @@
 // use crate::lib::sequence::async_cache::AsyncMeshCache;
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
-use bevy::window::{CursorGrabMode, PrimaryWindow};
+use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 use bevy_egui::EguiContexts;
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct CenterOnMeshEvent;
 
 #[derive(Component)]
@@ -38,7 +38,7 @@ impl Default for FpsCamera {
 /// System that handles centering the camera on the current mesh
 /// TODO: Reimplement after switching to Bevy's asset loading
 pub fn handle_center_on_mesh(
-    mut center_events: EventReader<CenterOnMeshEvent>,
+    mut center_events: MessageReader<CenterOnMeshEvent>,
     _camera_query: Query<(&mut Transform, &mut FpsCamera), (With<Camera3d>, With<FpsCamera>)>,
     // mesh_cache: Res<AsyncMeshCache>,
     _meshes: Res<Assets<Mesh>>,
@@ -134,7 +134,7 @@ pub fn handle_center_on_mesh(
 fn _calculate_mesh_centroid(mesh: &Mesh) -> Vec3 {
     if let Some(positions) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
         match positions {
-            bevy::render::mesh::VertexAttributeValues::Float32x3(vertices) => {
+            bevy::mesh::VertexAttributeValues::Float32x3(vertices) => {
                 if vertices.is_empty() {
                     return Vec3::ZERO;
                 }
@@ -170,7 +170,7 @@ fn _calculate_mesh_centroid(mesh: &Mesh) -> Vec3 {
 fn _calculate_mesh_bounds_radius(mesh: &Mesh, centroid: Vec3) -> f32 {
     if let Some(positions) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
         match positions {
-            bevy::render::mesh::VertexAttributeValues::Float32x3(vertices) => {
+            bevy::mesh::VertexAttributeValues::Float32x3(vertices) => {
                 if vertices.is_empty() {
                     return 50.0; // Default fallback
                 }
@@ -224,7 +224,7 @@ pub fn debug_mesh_cache_status(/* mesh_cache: Res<AsyncMeshCache>, */ meshes: Re
 /// System that provides fps-style camera controls
 pub fn camera_controller(
     time: Res<Time>,
-    mut mouse_events: EventReader<MouseMotion>,
+    mut mouse_events: MessageReader<MouseMotion>,
     input: Res<ButtonInput<KeyCode>>,
     mut query: Query<(&mut Transform, &FpsCamera), With<Camera>>,
 ) {
@@ -319,13 +319,13 @@ pub fn camera_controller(
 }
 
 pub fn cursor_grab_system(
-    mut windows: Query<&mut Window, With<PrimaryWindow>>,
+    mut cursor_query: Query<&mut CursorOptions, With<PrimaryWindow>>,
     input: Res<ButtonInput<MouseButton>>,
     key_input: Res<ButtonInput<KeyCode>>,
     mut camera_query: Query<&mut FpsCamera, With<Camera>>,
     mut egui_contexts: EguiContexts,
 ) {
-    let Ok(mut window) = windows.single_mut() else {
+    let Ok(mut cursor) = cursor_query.single_mut() else {
         return;
     };
     let Ok(mut fps_camera) = camera_query.single_mut() else {
@@ -342,15 +342,15 @@ pub fn cursor_grab_system(
 
     if input.just_pressed(MouseButton::Left) {
         // Grab cursor when left mouse button is pressed
-        window.cursor_options.visible = false;
-        window.cursor_options.grab_mode = CursorGrabMode::Locked;
+        cursor.visible = false;
+        cursor.grab_mode = CursorGrabMode::Locked;
         fps_camera.escape_mode = false;
     }
 
     if key_input.just_pressed(KeyCode::Escape) {
         // Release cursor when Escape is pressed
-        window.cursor_options.visible = true;
-        window.cursor_options.grab_mode = CursorGrabMode::None;
+        cursor.visible = true;
+        cursor.grab_mode = CursorGrabMode::None;
         fps_camera.escape_mode = true;
     }
 }

@@ -20,10 +20,10 @@ pub struct SessionPlugin;
 impl Plugin for SessionPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SessionManager>()
-            .add_event::<SessionCreatedEvent>()
-            .add_event::<SessionUpdatedEvent>()
-            .add_event::<SessionDeletedEvent>()
-            .add_event::<FrameReceivedEvent>()
+            .add_message::<SessionCreatedEvent>()
+            .add_message::<SessionUpdatedEvent>()
+            .add_message::<SessionDeletedEvent>()
+            .add_message::<FrameReceivedEvent>()
             .add_systems(
                 Update,
                 (handle_create_session_requests, update_session_frame_counts),
@@ -32,25 +32,25 @@ impl Plugin for SessionPlugin {
 }
 
 /// Event emitted when a new session is created
-#[derive(Event)]
+#[derive(Message)]
 pub struct SessionCreatedEvent {
     pub session_id: Uuid,
 }
 
 /// Event emitted when a session is updated
-#[derive(Event)]
+#[derive(Message)]
 pub struct SessionUpdatedEvent {
     pub session_id: Uuid,
 }
 
 /// Event emitted when a session is deleted
-#[derive(Event)]
+#[derive(Message)]
 pub struct SessionDeletedEvent {
     pub session_id: Uuid,
 }
 
 /// Event emitted when a new frame is received for a session
-#[derive(Event)]
+#[derive(Message)]
 pub struct FrameReceivedEvent {
     pub session_id: Uuid,
     pub frame_index: usize,
@@ -58,9 +58,9 @@ pub struct FrameReceivedEvent {
 
 /// System that handles UI requests to create new sessions
 fn handle_create_session_requests(
-    mut create_events: EventReader<crate::app::ui::state::CreateSessionEvent>,
+    mut create_events: MessageReader<crate::app::ui::state::CreateSessionEvent>,
     mut session_manager: ResMut<SessionManager>,
-    mut created_events: EventWriter<SessionCreatedEvent>,
+    mut created_events: MessageWriter<SessionCreatedEvent>,
 ) {
     for event in create_events.read() {
         match &event.source_type {
@@ -98,9 +98,9 @@ fn handle_create_session_requests(
 
 /// System that bridges NetworkMeshReceived events to our session system
 // fn bridge_network_to_session(
-//     mut network_events: EventReader<crate::lib::network::NetworkMeshReceived>,
+//     mut network_events: MessageReader<crate::lib::network::NetworkMeshReceived>,
 //     mut session_manager: ResMut<SessionManager>,
-//     mut frame_events: EventWriter<FrameReceivedEvent>,
+//     mut frame_events: MessageWriter<FrameReceivedEvent>,
 //     mut commands: Commands,
 //     mesh_query: Query<&Mesh3d>,
 //     meshes: Res<Assets<Mesh>>,
@@ -164,7 +164,7 @@ pub struct SessionMeshMarker {
 fn update_session_frame_counts(
     session_manager: Res<SessionManager>,
     mut ui_state: ResMut<crate::app::ui::state::UiState>,
-    frame_events: EventReader<FrameReceivedEvent>,
+    frame_events: MessageReader<FrameReceivedEvent>,
 ) {
     if !frame_events.is_empty() {
         // Update total frames for active session

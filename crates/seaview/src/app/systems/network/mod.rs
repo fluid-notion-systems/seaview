@@ -16,7 +16,7 @@ impl Plugin for NetworkMeshPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<NetworkConfig>()
             .init_resource::<NetworkReceiver>()
-            .add_event::<NetworkMeshReceived>()
+            .add_message::<NetworkMeshReceived>()
             .add_systems(Startup, setup_network_receiver)
             .add_systems(Update, poll_network_meshes);
     }
@@ -65,7 +65,7 @@ fn poll_network_meshes(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     network_receiver: Res<NetworkReceiver>,
-    mut mesh_received_events: EventWriter<NetworkMeshReceived>,
+    mut mesh_received_events: MessageWriter<NetworkMeshReceived>,
 ) {
     if let Some(receiver) = &network_receiver.receiver {
         // Try to lock the receiver

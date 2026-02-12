@@ -41,7 +41,7 @@ impl Default for KeyHoldTimer {
 fn handle_playback_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut sequence_manager: ResMut<SequenceManager>,
-    mut events: EventWriter<SequenceEvent>,
+    mut events: MessageWriter<SequenceEvent>,
     time: Res<Time>,
     mut key_timer: ResMut<KeyHoldTimer>,
 ) {

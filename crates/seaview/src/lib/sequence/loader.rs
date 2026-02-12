@@ -17,8 +17,8 @@ pub struct SequenceLoaderPlugin;
 impl Plugin for SequenceLoaderPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SequenceAssets>()
-            .add_event::<FrameLoadedEvent>()
-            .add_event::<LoadSequenceRequest>()
+            .add_message::<FrameLoadedEvent>()
+            .add_message::<LoadSequenceRequest>()
             .add_systems(
                 Update,
                 (
@@ -82,7 +82,7 @@ impl SequenceAssets {
 }
 
 /// Event fired when a frame finishes loading
-#[derive(Event)]
+#[derive(Message)]
 pub struct FrameLoadedEvent {
     /// Index of the loaded frame
     pub frame_index: usize,
@@ -91,7 +91,7 @@ pub struct FrameLoadedEvent {
 }
 
 /// Event to request loading a sequence
-#[derive(Event)]
+#[derive(Message)]
 pub struct LoadSequenceRequest {
     /// Paths to all frame files (in order)
     pub frame_paths: Vec<PathBuf>,
@@ -103,7 +103,7 @@ pub struct SequenceMeshDisplay;
 
 /// System that handles sequence load requests
 fn handle_load_requests(
-    mut load_requests: EventReader<LoadSequenceRequest>,
+    mut load_requests: MessageReader<LoadSequenceRequest>,
     mut sequence_assets: ResMut<SequenceAssets>,
     asset_server: Res<AssetServer>,
 ) {
@@ -163,9 +163,9 @@ fn handle_load_requests(
 /// System that tracks asset loading progress and spawns mesh entity when first frame loads
 fn track_asset_loading(
     mut commands: Commands,
-    mut events: EventReader<AssetEvent<Mesh>>,
+    mut events: MessageReader<AssetEvent<Mesh>>,
     mut sequence_assets: ResMut<SequenceAssets>,
-    mut frame_loaded_events: EventWriter<FrameLoadedEvent>,
+    mut frame_loaded_events: MessageWriter<FrameLoadedEvent>,
     asset_server: Res<AssetServer>,
     sequence_manager: Res<SequenceManager>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -328,7 +328,7 @@ fn update_mesh_display(
 
 /// System that responds to frame change events and updates the mesh
 fn handle_frame_changes(
-    mut sequence_events: EventReader<SequenceEvent>,
+    mut sequence_events: MessageReader<SequenceEvent>,
     mut sequence_assets: ResMut<SequenceAssets>,
     mut mesh_query: Query<&mut Mesh3d, With<SequenceMeshDisplay>>,
 ) {
@@ -353,7 +353,7 @@ fn handle_frame_changes(
 #[allow(dead_code)]
 pub fn load_discovered_sequence(
     sequence: &super::Sequence,
-    load_events: &mut EventWriter<LoadSequenceRequest>,
+    load_events: &mut MessageWriter<LoadSequenceRequest>,
 ) {
     let frame_paths: Vec<PathBuf> = sequence.frames.iter().map(|f| f.path.clone()).collect();
 

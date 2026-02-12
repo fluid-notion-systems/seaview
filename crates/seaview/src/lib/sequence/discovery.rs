@@ -83,8 +83,8 @@ fn handle_discovery_requests(
     mut commands: Commands,
     query: Query<(Entity, &DiscoverSequenceRequest)>,
     mut sequence_manager: ResMut<SequenceManager>,
-    mut events: EventWriter<SequenceEvent>,
-    mut load_events: EventWriter<LoadSequenceRequest>,
+    mut events: MessageWriter<SequenceEvent>,
+    mut load_events: MessageWriter<LoadSequenceRequest>,
     patterns: Option<Res<SequencePatterns>>,
 ) {
     // Use default patterns if none provided

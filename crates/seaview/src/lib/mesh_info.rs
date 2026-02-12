@@ -5,7 +5,7 @@
 //! can display dimensions immediately on subsequent launches.
 
 use bevy::prelude::*;
-use bevy::render::mesh::VertexAttributeValues;
+use bevy::mesh::VertexAttributeValues;
 
 use super::sequence::loader::SequenceMeshDisplay;
 use super::settings::{MeshBoundsSettings, SettingsResource};
@@ -16,7 +16,7 @@ pub struct MeshInfoPlugin;
 impl Plugin for MeshInfoPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<MeshDimensions>()
-            .add_event::<RecomputeMeshBounds>()
+            .add_message::<RecomputeMeshBounds>()
             .add_systems(
                 Update,
                 (
@@ -28,7 +28,7 @@ impl Plugin for MeshInfoPlugin {
 }
 
 /// Event that triggers a recomputation of the mesh AABB (e.g. from a UI button).
-#[derive(Event)]
+#[derive(Message)]
 pub struct RecomputeMeshBounds;
 
 /// Resource holding the current mesh's bounding-box information.
@@ -120,7 +120,7 @@ fn compute_bounds_on_first_load(
 
 /// Respond to an explicit recompute request (e.g. the UI button).
 fn handle_recompute_request(
-    mut events: EventReader<RecomputeMeshBounds>,
+    mut events: MessageReader<RecomputeMeshBounds>,
     mut dims: ResMut<MeshDimensions>,
     mesh_query: Query<&Mesh3d, With<SequenceMeshDisplay>>,
     meshes: Res<Assets<Mesh>>,

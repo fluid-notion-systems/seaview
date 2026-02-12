@@ -260,7 +260,7 @@ pub fn resolve_settings_dir(path: &Path) -> Option<PathBuf> {
 }
 
 /// Event sent when the user requests to save the current view
-#[derive(Event)]
+#[derive(Message)]
 pub struct SaveViewEvent;
 
 #[cfg(test)]

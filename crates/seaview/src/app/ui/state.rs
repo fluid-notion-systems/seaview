@@ -335,20 +335,20 @@ impl UiState {
 }
 
 /// Event sent when the user requests to create a new session
-#[derive(Event)]
+#[derive(Message)]
 pub struct CreateSessionEvent {
     pub name: String,
     pub source_type: SessionSourceType,
 }
 
 /// Event sent when the user requests to delete a session
-#[derive(Event)]
+#[derive(Message)]
 pub struct DeleteSessionEvent {
     pub session_id: Uuid,
 }
 
 /// Event sent when the user requests to switch sessions
-#[derive(Event)]
+#[derive(Message)]
 pub struct SwitchSessionEvent {
     pub session_id: Uuid,
 }
@@ -368,8 +368,8 @@ impl Plugin for UiStatePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(UiState::new())
             .add_plugins(MaterialConfigPlugin)
-            .add_event::<CreateSessionEvent>()
-            .add_event::<DeleteSessionEvent>()
-            .add_event::<SwitchSessionEvent>();
+            .add_message::<CreateSessionEvent>()
+            .add_message::<DeleteSessionEvent>()
+            .add_message::<SwitchSessionEvent>();
     }
 }

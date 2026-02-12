@@ -14,9 +14,9 @@ use crate::lib::settings::SaveViewEvent;
 pub fn playback_controls_system(
     mut contexts: EguiContexts,
     mut ui_state: ResMut<UiState>,
-    mut center_events: EventWriter<CenterOnMeshEvent>,
-    mut sequence_events: EventWriter<SequenceEvent>,
-    mut save_view_events: EventWriter<SaveViewEvent>,
+    mut center_events: MessageWriter<CenterOnMeshEvent>,
+    mut sequence_events: MessageWriter<SequenceEvent>,
+    mut save_view_events: MessageWriter<SaveViewEvent>,
     time: Res<Time>,
     sequence_manager: Res<SequenceManager>,
     sequence_assets: Res<SequenceAssets>,
@@ -243,7 +243,7 @@ pub fn playback_controls_system(
 /// System that handles automatic playback advancement
 pub fn playback_update_system(
     mut ui_state: ResMut<UiState>,
-    mut sequence_events: EventWriter<SequenceEvent>,
+    mut sequence_events: MessageWriter<SequenceEvent>,
     time: Res<Time>,
     mut last_update: Local<f32>,
 ) {

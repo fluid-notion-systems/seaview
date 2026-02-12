@@ -269,7 +269,7 @@ fn update_markers(
 pub fn toggle_global_lights(
     config: Res<NightLightingConfig>,
     mut global_lights: Query<&mut Visibility, With<GlobalLight>>,
-    mut ambient: ResMut<AmbientLight>,
+    mut ambient: ResMut<GlobalAmbientLight>,
 ) {
     if !config.is_changed() {
         return;

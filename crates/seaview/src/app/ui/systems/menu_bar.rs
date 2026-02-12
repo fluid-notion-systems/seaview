@@ -11,34 +11,34 @@ use crate::app::ui::state::{CreateSessionEvent, SessionSourceType, UiState};
 pub fn menu_bar_system(
     mut contexts: EguiContexts,
     mut ui_state: ResMut<UiState>,
-    mut create_session_events: EventWriter<CreateSessionEvent>,
-    mut exit: EventWriter<AppExit>,
+    mut create_session_events: MessageWriter<CreateSessionEvent>,
+    mut exit: MessageWriter<AppExit>,
 ) {
     let ctx = contexts.ctx_mut().unwrap();
 
     egui::TopBottomPanel::top("menu_bar")
         .exact_height(ui_state.panel_sizes.menu_bar_height)
         .show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
+            egui::MenuBar::new().ui(ui, |ui| {
                 // File menu
                 ui.menu_button("File", |ui| {
                     if ui.button("Open File...").clicked() {
                         // TODO: Implement file picker
                         ui_state.show_info("File picker not yet implemented");
-                        ui.close_menu();
+                        ui.close();
                     }
 
                     if ui.button("Open Directory...").clicked() {
                         // TODO: Implement directory picker
                         ui_state.show_info("Directory picker not yet implemented");
-                        ui.close_menu();
+                        ui.close();
                     }
 
                     ui.separator();
 
                     if ui.button("Exit").clicked() {
                         exit.write(AppExit::Success);
-                        ui.close_menu();
+                        ui.close();
                     }
                 });
 
@@ -46,7 +46,7 @@ pub fn menu_bar_system(
                 ui.menu_button("Session", |ui| {
                     if ui.button("New Session...").clicked() {
                         ui_state.temp_state.show_new_session_dialog = true;
-                        ui.close_menu();
+                        ui.close();
                     }
 
                     ui.separator();
@@ -59,7 +59,7 @@ pub fn menu_bar_system(
                             ),
                             source_type: SessionSourceType::Network { port: 9877 },
                         });
-                        ui.close_menu();
+                        ui.close();
                     }
 
                     ui.separator();
@@ -68,13 +68,13 @@ pub fn menu_bar_system(
                         if ui.button("Save Session").clicked() {
                             // TODO: Implement session saving
                             ui_state.show_info("Session saving not yet implemented");
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui.button("Export Session...").clicked() {
                             // TODO: Implement session export
                             ui_state.show_info("Session export not yet implemented");
-                            ui.close_menu();
+                            ui.close();
                         }
                     });
                 });
@@ -85,21 +85,21 @@ pub fn menu_bar_system(
                         .checkbox(&mut ui_state.show_session_panel, "Session Panel")
                         .clicked()
                     {
-                        ui.close_menu();
+                        ui.close();
                     }
 
                     if ui
                         .checkbox(&mut ui_state.show_network_panel, "Network Panel")
                         .clicked()
                     {
-                        ui.close_menu();
+                        ui.close();
                     }
 
                     if ui
                         .checkbox(&mut ui_state.show_playback_controls, "Playback Controls")
                         .clicked()
                     {
-                        ui.close_menu();
+                        ui.close();
                     }
 
                     ui.separator();
@@ -109,7 +109,7 @@ pub fn menu_bar_system(
                         ui_state.show_session_panel = true;
                         ui_state.show_network_panel = true;
                         ui_state.show_playback_controls = true;
-                        ui.close_menu();
+                        ui.close();
                     }
                 });
 
@@ -118,13 +118,13 @@ pub fn menu_bar_system(
                     if ui.button("Start Network Receiver...").clicked() {
                         // TODO: Show network configuration dialog
                         ui_state.show_info("Network configuration dialog not yet implemented");
-                        ui.close_menu();
+                        ui.close();
                     }
 
                     if ui.button("Stop All Receivers").clicked() {
                         // TODO: Implement stopping all network receivers
                         ui_state.show_info("Stop receivers not yet implemented");
-                        ui.close_menu();
+                        ui.close();
                     }
 
                     ui.separator();
@@ -132,7 +132,7 @@ pub fn menu_bar_system(
                     if ui.button("Network Statistics").clicked() {
                         // TODO: Show network statistics window
                         ui_state.show_info("Network statistics not yet implemented");
-                        ui.close_menu();
+                        ui.close();
                     }
                 });
 
@@ -148,7 +148,7 @@ pub fn menu_bar_system(
                             • Shift: Fast mode\n\
                             • Alt: Slow mode",
                         );
-                        ui.close_menu();
+                        ui.close();
                     }
 
                     ui.separator();
@@ -159,7 +159,7 @@ pub fn menu_bar_system(
                             Version 0.1.0\n\n\
                             A real-time mesh visualization tool for fluid simulations.",
                         );
-                        ui.close_menu();
+                        ui.close();
                     }
                 });
             });
@@ -170,7 +170,7 @@ pub fn menu_bar_system(
 pub fn new_session_dialog_system(
     mut contexts: EguiContexts,
     mut ui_state: ResMut<UiState>,
-    mut create_session_events: EventWriter<CreateSessionEvent>,
+    mut create_session_events: MessageWriter<CreateSessionEvent>,
 ) {
     if !ui_state.temp_state.show_new_session_dialog {
         return;

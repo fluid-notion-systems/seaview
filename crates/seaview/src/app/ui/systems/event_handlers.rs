@@ -8,7 +8,7 @@ use crate::app::ui::state::{DeleteSessionEvent, SwitchSessionEvent, UiState};
 
 /// System that handles session switch events
 pub fn handle_switch_session_events(
-    mut events: EventReader<SwitchSessionEvent>,
+    mut events: MessageReader<SwitchSessionEvent>,
     mut ui_state: ResMut<UiState>,
 ) {
     for event in events.read() {
@@ -19,7 +19,7 @@ pub fn handle_switch_session_events(
 
 /// System that handles session deletion events
 pub fn handle_delete_session_events(
-    mut events: EventReader<DeleteSessionEvent>,
+    mut events: MessageReader<DeleteSessionEvent>,
     mut ui_state: ResMut<UiState>,
 ) {
     for event in events.read() {
@@ -36,7 +36,7 @@ pub fn handle_delete_session_events(
 
 /// System that handles session creation events
 pub fn handle_create_session_events(
-    mut events: EventReader<crate::app::ui::state::CreateSessionEvent>,
+    mut events: MessageReader<crate::app::ui::state::CreateSessionEvent>,
 ) {
     for event in events.read() {
         info!(

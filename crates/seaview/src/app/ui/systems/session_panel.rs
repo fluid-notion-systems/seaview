@@ -16,13 +16,13 @@ use crate::lib::session::SessionManager;
 pub fn session_panel_system(
     mut contexts: EguiContexts,
     mut ui_state: ResMut<UiState>,
-    mut switch_events: EventWriter<SwitchSessionEvent>,
-    _delete_events: EventWriter<DeleteSessionEvent>,
+    mut switch_events: MessageWriter<SwitchSessionEvent>,
+    _delete_events: MessageWriter<DeleteSessionEvent>,
     session_manager: Res<SessionManager>,
     mut lighting_config: ResMut<NightLightingConfig>,
     mut material_config: ResMut<MaterialConfig>,
     mesh_dims: Res<MeshDimensions>,
-    mut recompute_events: EventWriter<RecomputeMeshBounds>,
+    mut recompute_events: MessageWriter<RecomputeMeshBounds>,
 ) {
     if !ui_state.show_session_panel {
         debug!("Session panel is hidden");
@@ -220,7 +220,7 @@ fn render_session_item(
     ui: &mut egui::Ui,
     session: &crate::lib::session::Session,
     is_active: bool,
-    switch_events: &mut EventWriter<SwitchSessionEvent>,
+    switch_events: &mut MessageWriter<SwitchSessionEvent>,
 ) -> Option<Uuid> {
     let mut delete_requested = None;
     let frame_color = if is_active {
@@ -677,7 +677,7 @@ fn render_material_controls(ui: &mut egui::Ui, config: &mut MaterialConfig) {
 pub fn delete_confirmation_dialog_system(
     mut contexts: EguiContexts,
     mut ui_state: ResMut<UiState>,
-    mut delete_events: EventWriter<DeleteSessionEvent>,
+    mut delete_events: MessageWriter<DeleteSessionEvent>,
 ) {
     if let Some(session_id) = ui_state.temp_state.show_delete_confirmation {
         let ctx = contexts.ctx_mut().unwrap();
