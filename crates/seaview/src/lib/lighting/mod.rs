@@ -38,6 +38,12 @@ pub struct NightLightingConfig {
 
     /// Light range (distance)
     pub range: f32,
+
+    /// Whether to show visual markers for light positions
+    pub show_markers: bool,
+
+    /// Size of the marker spheres (in meters)
+    pub marker_size: f32,
 }
 
 impl Default for NightLightingConfig {
@@ -51,6 +57,8 @@ impl Default for NightLightingConfig {
             intensity: 1000.0,
             color: Color::srgb(1.0, 0.95, 0.9), // Warm white
             range: 200.0,
+            show_markers: true,
+            marker_size: 0.5,
         }
     }
 }
@@ -60,6 +68,13 @@ impl Default for NightLightingConfig {
 pub struct NightLight {
     /// Index of this light in the grid
     pub index: usize,
+}
+
+/// Marker component for the visual sphere representing a light source
+#[derive(Component)]
+pub struct NightLightMarker {
+    /// Index of the associated light
+    pub light_index: usize,
 }
 
 /// Plugin that manages the night lighting system

@@ -351,6 +351,30 @@ fn render_lighting_rig_controls(ui: &mut egui::Ui, config: &mut NightLightingCon
     if ui.color_edit_button_rgb(&mut color_array).changed() {
         config.color = Color::srgb(color_array[0], color_array[1], color_array[2]);
     }
+
+    ui.add_space(5.0);
+    ui.separator();
+
+    // Marker visualization section
+    ui.label(egui::RichText::new("Light Markers").strong());
+
+    ui.add_space(5.0);
+
+    // Show markers toggle
+    ui.horizontal(|ui| {
+        ui.label("Show Markers:");
+        ui.checkbox(&mut config.show_markers, "");
+    });
+
+    ui.add_space(5.0);
+
+    // Marker size slider (only show if markers are enabled)
+    if config.show_markers {
+        ui.horizontal(|ui| {
+            ui.label("Marker Size:");
+        });
+        ui.add(egui::Slider::new(&mut config.marker_size, 0.1..=5.0).suffix(" m"));
+    }
 }
 
 /// System that shows the delete confirmation dialog

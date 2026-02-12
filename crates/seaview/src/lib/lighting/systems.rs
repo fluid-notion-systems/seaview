@@ -5,7 +5,7 @@
 
 use bevy::prelude::*;
 
-use super::{NightLight, NightLightingConfig};
+use super::{NightLight, NightLightMarker, NightLightingConfig};
 
 /// System that updates night lights based on configuration changes
 ///
@@ -15,12 +15,18 @@ use super::{NightLight, NightLightingConfig};
 /// - Despawns lights when they're no longer needed
 pub fn update_night_lights(
     mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     config: Res<NightLightingConfig>,
     existing_lights: Query<(Entity, &NightLight)>,
+    existing_markers: Query<(Entity, &NightLightMarker)>,
 ) {
-    // If lighting is disabled, despawn all lights
+    // If lighting is disabled, despawn all lights and markers
     if !config.enabled {
         for (entity, _) in existing_lights.iter() {
+            commands.entity(entity).despawn();
+        }
+        for (entity, _) in existing_markers.iter() {
             commands.entity(entity).despawn();
         }
         return;
@@ -41,18 +47,29 @@ pub fn update_night_lights(
         for (entity, _) in existing_lights.iter() {
             commands.entity(entity).despawn();
         }
+        for (entity, _) in existing_markers.iter() {
+            commands.entity(entity).despawn();
+        }
 
-        spawn_lights(&mut commands, &config);
+        spawn_lights(&mut commands, &mut meshes, &mut materials, &config);
     } else {
         // Update existing lights' properties
         for (entity, light) in existing_lights.iter() {
             update_light_transform(&mut commands, entity, light.index, &config);
         }
+
+        // Update marker visibility and size
+        update_markers(&mut commands, &mut meshes, &existing_markers, &config);
     }
 }
 
 /// Spawn all lights according to current configuration
-fn spawn_lights(commands: &mut Commands, config: &NightLightingConfig) {
+fn spawn_lights(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    config: &NightLightingConfig,
+) {
     // Calculate scene bounds (TODO: get from actual scene data)
     let bounds_min = Vec2::new(-100.0, -100.0);
     let bounds_max = Vec2::new(100.0, 100.0);
@@ -79,6 +96,11 @@ fn spawn_lights(commands: &mut Commands, config: &NightLightingConfig) {
             transform,
             NightLight { index },
         ));
+
+        // Spawn marker sphere if enabled
+        if config.show_markers {
+            spawn_marker(commands, meshes, materials, *pos, config.height, index, config);
+        }
     }
 }
 
@@ -127,5 +149,51 @@ fn calculate_light_transform(pos: Vec2, height: f32, _cone_angle: f32) -> Transf
         translation,
         rotation,
         scale: Vec3::ONE,
+    }
+}
+
+/// Spawn a marker sphere at the light position
+fn spawn_marker(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    pos: Vec2,
+    height: f32,
+    index: usize,
+    config: &NightLightingConfig,
+) {
+    let sphere_mesh = meshes.add(Sphere::new(config.marker_size));
+    let material = materials.add(StandardMaterial {
+        base_color: config.color,
+        emissive: (config.color.to_linear() * 2.0).into(),
+        ..default()
+    });
+
+    commands.spawn((
+        Mesh3d(sphere_mesh),
+        MeshMaterial3d(material),
+        Transform::from_xyz(pos.x, height, pos.y),
+        NightLightMarker { light_index: index },
+    ));
+}
+
+/// Update marker visibility and size
+fn update_markers(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    existing_markers: &Query<(Entity, &NightLightMarker)>,
+    config: &NightLightingConfig,
+) {
+    if !config.show_markers {
+        // Hide markers by despawning them
+        for (entity, _) in existing_markers.iter() {
+            commands.entity(entity).despawn();
+        }
+    } else {
+        // Update marker meshes if size changed
+        let new_sphere = meshes.add(Sphere::new(config.marker_size));
+        for (entity, _) in existing_markers.iter() {
+            commands.entity(entity).insert(Mesh3d(new_sphere.clone()));
+        }
     }
 }
