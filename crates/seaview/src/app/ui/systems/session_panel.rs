@@ -198,7 +198,7 @@ pub fn session_panel_system(
                         .show(ui, |ui| {
                             ui_state.collapsible.lighting_rig_open = true;
 
-                            render_lighting_rig_controls(ui, &mut lighting_config);
+                            render_lighting_rig_controls(ui, &mut lighting_config, &mesh_dims);
                         });
 
                     ui.add_space(5.0);
@@ -296,7 +296,7 @@ fn render_session_item(
 }
 
 /// Render lighting rig controls
-fn render_lighting_rig_controls(ui: &mut egui::Ui, config: &mut NightLightingConfig) {
+fn render_lighting_rig_controls(ui: &mut egui::Ui, config: &mut NightLightingConfig, mesh_dims: &MeshDimensions) {
     // Global lighting toggle
     ui.horizontal(|ui| {
         ui.label("Global Lights:");
@@ -345,6 +345,19 @@ fn render_lighting_rig_controls(ui: &mut egui::Ui, config: &mut NightLightingCon
                 );
             }
         });
+
+    ui.add_space(5.0);
+
+    // Coverage percentage slider
+    ui.horizontal(|ui| {
+        ui.label("Coverage:");
+    });
+    ui.add(egui::Slider::new(&mut config.coverage_pct, 10.0..=300.0).suffix(" %"));
+
+    ui.add_space(5.0);
+
+    // 2D Light Map — top-down view of light positions over the mesh footprint
+    render_light_map(ui, config, mesh_dims);
 
     ui.add_space(5.0);
 
@@ -445,6 +458,105 @@ fn render_lighting_rig_controls(ui: &mut egui::Ui, config: &mut NightLightingCon
         });
         ui.add(egui::Slider::new(&mut config.marker_size, 0.1..=5.0).suffix(" m"));
     }
+}
+
+/// Render an interactive 2D top-down light map showing the mesh footprint and light positions.
+fn render_light_map(ui: &mut egui::Ui, config: &mut NightLightingConfig, mesh_dims: &MeshDimensions) {
+    // Compute world-space placement bounds
+    let scale = config.coverage_pct / 100.0;
+    let (world_min, world_max) = if let (Some(mn), Some(mx)) = (mesh_dims.min, mesh_dims.max) {
+        let cx = (mn.x + mx.x) * 0.5;
+        let cz = (mn.z + mx.z) * 0.5;
+        let hx = (mx.x - mn.x) * 0.5 * scale;
+        let hz = (mx.z - mn.z) * 0.5 * scale;
+        (egui::Vec2::new(cx - hx, cz - hz), egui::Vec2::new(cx + hx, cz + hz))
+    } else {
+        let f = 100.0 * scale;
+        (egui::Vec2::new(-f, -f), egui::Vec2::new(f, f))
+    };
+
+    // Mesh footprint (unscaled) for drawing the outline
+    let (mesh_min, mesh_max) = if let (Some(mn), Some(mx)) = (mesh_dims.min, mesh_dims.max) {
+        (egui::Vec2::new(mn.x, mn.z), egui::Vec2::new(mx.x, mx.z))
+    } else {
+        (egui::Vec2::new(-100.0, -100.0), egui::Vec2::new(100.0, 100.0))
+    };
+
+    // Widget size — square, as wide as the panel allows
+    let available = ui.available_width().min(280.0);
+    let map_size = egui::Vec2::splat(available);
+
+    let (response, painter) = ui.allocate_painter(map_size, egui::Sense::click_and_drag());
+    let rect = response.rect;
+
+    // Background
+    painter.rect_filled(rect, 2.0, egui::Color32::from_gray(30));
+
+    // --- coordinate mapping helpers ---
+    // Map world XZ → widget pixel position.  We add a small margin so dots
+    // at the edges aren't clipped.
+    let world_extent = world_max - world_min;
+    let margin = 8.0;
+    let draw_rect = rect.shrink(margin);
+
+    let world_to_screen = |wx: f32, wz: f32| -> egui::Pos2 {
+        let nx = if world_extent.x.abs() > f32::EPSILON {
+            (wx - world_min.x) / world_extent.x
+        } else {
+            0.5
+        };
+        let nz = if world_extent.y.abs() > f32::EPSILON {
+            (wz - world_min.y) / world_extent.y
+        } else {
+            0.5
+        };
+        egui::Pos2::new(
+            draw_rect.left() + nx * draw_rect.width(),
+            draw_rect.top() + nz * draw_rect.height(),
+        )
+    };
+
+    // Draw mesh footprint rectangle
+    let mesh_tl = world_to_screen(mesh_min.x, mesh_min.y);
+    let mesh_br = world_to_screen(mesh_max.x, mesh_max.y);
+    painter.rect_stroke(
+        egui::Rect::from_two_pos(mesh_tl, mesh_br),
+        1.0,
+        egui::Stroke::new(1.0, egui::Color32::from_rgba_unmultiplied(100, 160, 255, 120)),
+        egui::StrokeKind::Outside,
+    );
+
+    // Compute light positions via the placement algorithm
+    let bounds_min_bevy = bevy::prelude::Vec2::new(world_min.x, world_min.y);
+    let bounds_max_bevy = bevy::prelude::Vec2::new(world_max.x, world_max.y);
+    let positions = config
+        .placement_algorithm
+        .calculate_positions(config.num_lights, bounds_min_bevy, bounds_max_bevy);
+
+    // Draw each light as a filled circle
+    let light_color = egui::Color32::from_rgb(
+        (config.color.to_srgba().red * 255.0) as u8,
+        (config.color.to_srgba().green * 255.0) as u8,
+        (config.color.to_srgba().blue * 255.0) as u8,
+    );
+    let dot_radius = 4.0;
+
+    for pos in &positions {
+        let screen_pos = world_to_screen(pos.x, pos.y);
+        painter.circle_filled(screen_pos, dot_radius, light_color);
+        painter.circle_stroke(screen_pos, dot_radius, egui::Stroke::new(1.0, egui::Color32::WHITE));
+    }
+
+    // Label with world extents
+    let w = world_extent.x;
+    let h = world_extent.y;
+    painter.text(
+        rect.left_bottom() + egui::Vec2::new(2.0, -2.0),
+        egui::Align2::LEFT_BOTTOM,
+        format!("{:.0}×{:.0} m", w, h),
+        egui::FontId::proportional(10.0),
+        egui::Color32::from_gray(140),
+    );
 }
 
 /// Render material property controls

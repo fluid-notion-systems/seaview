@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_2;
 
 use super::{GlobalLight, NightLight, NightLightMarker, NightLightingConfig};
+use crate::lib::mesh_info::MeshDimensions;
 
 /// Convert the UI cone angle (full angle in degrees) to a valid SpotLight outer_angle
 /// (half-angle in radians, clamped to PI/2 max).
@@ -20,6 +21,31 @@ fn cone_to_inner_angle(cone_angle_degrees: f32) -> f32 {
     cone_to_outer_angle(cone_angle_degrees) * 0.8
 }
 
+/// Compute the XZ placement bounds from the mesh AABB and the coverage percentage.
+///
+/// `coverage_pct` of 100 means the lights exactly span the mesh footprint.
+/// Values above 100 extend beyond the mesh; below 100 cover a smaller area.
+/// Falls back to a default ±100 square when no mesh dimensions are available.
+fn compute_placement_bounds(mesh_dims: &MeshDimensions, coverage_pct: f32) -> (Vec2, Vec2) {
+    let scale = coverage_pct / 100.0;
+
+    if let (Some(mn), Some(mx)) = (mesh_dims.min, mesh_dims.max) {
+        // Centre of the mesh on the XZ plane
+        let cx = (mn.x + mx.x) * 0.5;
+        let cz = (mn.z + mx.z) * 0.5;
+
+        // Half-extents scaled by coverage
+        let hx = (mx.x - mn.x) * 0.5 * scale;
+        let hz = (mx.z - mn.z) * 0.5 * scale;
+
+        (Vec2::new(cx - hx, cz - hz), Vec2::new(cx + hx, cz + hz))
+    } else {
+        // Fallback when no mesh is loaded
+        let fallback = 100.0 * scale;
+        (Vec2::new(-fallback, -fallback), Vec2::new(fallback, fallback))
+    }
+}
+
 /// System that updates night lights based on configuration changes
 ///
 /// This system:
@@ -31,6 +57,7 @@ pub fn update_night_lights(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     config: Res<NightLightingConfig>,
+    mesh_dims: Res<MeshDimensions>,
     existing_lights: Query<(Entity, &NightLight)>,
     existing_markers: Query<(Entity, &NightLightMarker)>,
 ) {
@@ -45,8 +72,8 @@ pub fn update_night_lights(
         return;
     }
 
-    // Only update if config has changed
-    if !config.is_changed() {
+    // Only update if config or mesh dims have changed
+    if !config.is_changed() && !mesh_dims.is_changed() {
         return;
     }
 
@@ -65,11 +92,11 @@ pub fn update_night_lights(
             commands.entity(entity).despawn();
         }
 
-        spawn_lights(&mut commands, &mut meshes, &mut materials, &config);
+        spawn_lights(&mut commands, &mut meshes, &mut materials, &config, &mesh_dims);
     } else {
         // Update existing lights' properties
         for (entity, light) in existing_lights.iter() {
-            update_light_transform(&mut commands, entity, light.index, &config);
+            update_light_transform(&mut commands, entity, light.index, &config, &mesh_dims);
         }
 
         // Update marker visibility, size, and positions
@@ -79,6 +106,7 @@ pub fn update_night_lights(
             &mut materials,
             &existing_markers,
             &config,
+            &mesh_dims,
             marker_count,
         );
     }
@@ -90,10 +118,9 @@ fn spawn_lights(
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
     config: &NightLightingConfig,
+    mesh_dims: &MeshDimensions,
 ) {
-    // Calculate scene bounds (TODO: get from actual scene data)
-    let bounds_min = Vec2::new(-100.0, -100.0);
-    let bounds_max = Vec2::new(100.0, 100.0);
+    let (bounds_min, bounds_max) = compute_placement_bounds(mesh_dims, config.coverage_pct);
 
     // Calculate light positions using the configured algorithm
     let positions = config
@@ -131,10 +158,9 @@ fn update_light_transform(
     entity: Entity,
     index: usize,
     config: &NightLightingConfig,
+    mesh_dims: &MeshDimensions,
 ) {
-    // Calculate scene bounds (TODO: get from actual scene data)
-    let bounds_min = Vec2::new(-100.0, -100.0);
-    let bounds_max = Vec2::new(100.0, 100.0);
+    let (bounds_min, bounds_max) = compute_placement_bounds(mesh_dims, config.coverage_pct);
 
     // Calculate light positions
     let positions = config
@@ -199,6 +225,7 @@ fn update_markers(
     materials: &mut ResMut<Assets<StandardMaterial>>,
     existing_markers: &Query<(Entity, &NightLightMarker)>,
     config: &NightLightingConfig,
+    mesh_dims: &MeshDimensions,
     marker_count: usize,
 ) {
     if !config.show_markers {
@@ -208,8 +235,7 @@ fn update_markers(
         }
     } else if marker_count == 0 && config.num_lights > 0 {
         // Markers were toggled on - spawn them
-        let bounds_min = Vec2::new(-100.0, -100.0);
-        let bounds_max = Vec2::new(100.0, 100.0);
+        let (bounds_min, bounds_max) = compute_placement_bounds(mesh_dims, config.coverage_pct);
 
         let positions = config
             .placement_algorithm
@@ -219,9 +245,7 @@ fn update_markers(
             spawn_marker(commands, meshes, materials, *pos, config.height, index, config);
         }
     } else {
-        // Calculate scene bounds (TODO: get from actual scene data)
-        let bounds_min = Vec2::new(-100.0, -100.0);
-        let bounds_max = Vec2::new(100.0, 100.0);
+        let (bounds_min, bounds_max) = compute_placement_bounds(mesh_dims, config.coverage_pct);
 
         // Calculate light positions
         let positions = config

@@ -53,6 +53,10 @@ pub struct NightLightingConfig {
 
     /// Size of the marker spheres (in meters)
     pub marker_size: f32,
+
+    /// Coverage percentage of mesh XZ extent (100 = exactly covers the mesh footprint,
+    /// 150 = extends 50% beyond the mesh in each direction, etc.)
+    pub coverage_pct: f32,
 }
 
 impl Default for NightLightingConfig {
@@ -69,6 +73,7 @@ impl Default for NightLightingConfig {
             range: 500.0,
             show_markers: true,
             marker_size: 0.5,
+            coverage_pct: 120.0,
         }
     }
 }
