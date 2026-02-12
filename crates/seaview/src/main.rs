@@ -1,5 +1,6 @@
 use bevy::asset::io::AssetSourceBuilder;
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
+use bevy::pbr::{DefaultOpaqueRendererMethod, ScreenSpaceReflections};
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use seaview::{NightLightingPlugin, SeaviewUiPlugin, SessionPlugin};
@@ -126,7 +127,8 @@ fn main() {
         warn!("Provide a path via CLI to load meshes");
     }
 
-    app.add_plugins(DefaultPlugins)
+    app.insert_resource(DefaultOpaqueRendererMethod::deferred())
+        .add_plugins(DefaultPlugins)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(LogDiagnosticsPlugin::default())
         .add_plugins(RenderingDiagnosticsPlugin)
@@ -178,11 +180,13 @@ fn setup(
                 .looking_at(Vec3::new(37.0, 37.0, 27.5), Vec3::Y)
         });
 
-    // Spawn the FPS camera
+    // Spawn the FPS camera with HDR, MSAA off, and SSR enabled (deferred rendering)
     commands.spawn((
         Camera3d::default(),
         camera_transform,
         FpsCamera::default(),
+        Msaa::Off,
+        ScreenSpaceReflections::default(),
     ));
 
     // Apply playback settings from seaview.toml
