@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 use uuid::Uuid;
 
-use crate::app::ui::state::{DeleteSessionEvent, SwitchSessionEvent, UiState};
+use crate::app::ui::state::{AlphaModeConfig, DeleteSessionEvent, MaterialConfig, SwitchSessionEvent, UiState};
 use crate::lib::lighting::{NightLightingConfig, PlacementAlgorithm};
 use crate::lib::session::SessionManager;
 
@@ -19,6 +19,7 @@ pub fn session_panel_system(
     _delete_events: EventWriter<DeleteSessionEvent>,
     session_manager: Res<SessionManager>,
     mut lighting_config: ResMut<NightLightingConfig>,
+    mut material_config: ResMut<MaterialConfig>,
 ) {
     if !ui_state.show_session_panel {
         debug!("Session panel is hidden");
@@ -149,6 +150,17 @@ pub fn session_panel_system(
                             ui_state.collapsible.lighting_rig_open = true;
 
                             render_lighting_rig_controls(ui, &mut lighting_config);
+                        });
+
+                    ui.add_space(5.0);
+
+                    // Material Section (Collapsible)
+                    egui::CollapsingHeader::new("Material")
+                        .default_open(ui_state.collapsible.material_open)
+                        .show(ui, |ui| {
+                            ui_state.collapsible.material_open = true;
+
+                            render_material_controls(ui, &mut material_config);
                         });
                 });
         });
@@ -374,6 +386,120 @@ fn render_lighting_rig_controls(ui: &mut egui::Ui, config: &mut NightLightingCon
             ui.label("Marker Size:");
         });
         ui.add(egui::Slider::new(&mut config.marker_size, 0.1..=5.0).suffix(" m"));
+    }
+}
+
+/// Render material property controls
+fn render_material_controls(ui: &mut egui::Ui, config: &mut MaterialConfig) {
+    // Base color picker
+    ui.horizontal(|ui| {
+        ui.label("Color:");
+    });
+    let mut color_array = [
+        config.base_color.to_srgba().red,
+        config.base_color.to_srgba().green,
+        config.base_color.to_srgba().blue,
+    ];
+    if ui.color_edit_button_rgb(&mut color_array).changed() {
+        config.base_color = Color::srgb(color_array[0], color_array[1], color_array[2]);
+    }
+
+    ui.add_space(5.0);
+
+    // Roughness slider
+    ui.horizontal(|ui| {
+        ui.label("Roughness:");
+    });
+    ui.add(
+        egui::Slider::new(&mut config.perceptual_roughness, 0.0..=1.0)
+            .custom_formatter(|v, _| format!("{:.2}", v)),
+    );
+
+    ui.add_space(5.0);
+
+    // Metallic slider
+    ui.horizontal(|ui| {
+        ui.label("Metallic:");
+    });
+    ui.add(
+        egui::Slider::new(&mut config.metallic, 0.0..=1.0)
+            .custom_formatter(|v, _| format!("{:.2}", v)),
+    );
+
+    ui.add_space(5.0);
+
+    // Reflectance slider
+    ui.horizontal(|ui| {
+        ui.label("Reflectance:");
+    });
+    ui.add(
+        egui::Slider::new(&mut config.reflectance, 0.0..=1.0)
+            .custom_formatter(|v, _| format!("{:.2}", v)),
+    );
+
+    ui.add_space(5.0);
+    ui.separator();
+
+    // Emissive section
+    ui.label(egui::RichText::new("Emissive").strong());
+    ui.add_space(5.0);
+
+    ui.horizontal(|ui| {
+        ui.label("Color:");
+    });
+    let mut emissive_array = [
+        config.emissive.to_srgba().red,
+        config.emissive.to_srgba().green,
+        config.emissive.to_srgba().blue,
+    ];
+    if ui.color_edit_button_rgb(&mut emissive_array).changed() {
+        config.emissive = Color::srgb(emissive_array[0], emissive_array[1], emissive_array[2]);
+    }
+
+    ui.add_space(5.0);
+
+    ui.horizontal(|ui| {
+        ui.label("Intensity:");
+    });
+    ui.add(egui::Slider::new(&mut config.emissive_intensity, 0.0..=50.0));
+
+    ui.add_space(5.0);
+    ui.separator();
+
+    // Rendering options
+    ui.label(egui::RichText::new("Rendering").strong());
+    ui.add_space(5.0);
+
+    // Double-sided toggle
+    ui.horizontal(|ui| {
+        ui.label("Double Sided:");
+        ui.checkbox(&mut config.double_sided, "");
+    });
+
+    ui.add_space(5.0);
+
+    // Alpha mode
+    ui.horizontal(|ui| {
+        ui.label("Alpha Mode:");
+    });
+    egui::ComboBox::from_id_salt("alpha_mode")
+        .selected_text(config.alpha_mode.name())
+        .show_ui(ui, |ui| {
+            for mode in AlphaModeConfig::all() {
+                ui.selectable_value(&mut config.alpha_mode, *mode, mode.name());
+            }
+        });
+
+    // Alpha cutoff (only for Mask mode)
+    if config.alpha_mode == AlphaModeConfig::Mask {
+        ui.add_space(5.0);
+        ui.horizontal(|ui| {
+            ui.label("Alpha Cutoff:");
+        });
+        ui.add(
+            egui::Slider::new(&mut config.alpha_cutoff, 0.0..=1.0)
+                .custom_formatter(|v, _| format!("{:.2}", v)),
+        );
     }
 }
 

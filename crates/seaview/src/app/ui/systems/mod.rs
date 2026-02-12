@@ -6,11 +6,13 @@ use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 
 mod event_handlers;
+mod material_system;
 mod menu_bar;
 mod playback_controls;
 mod session_panel;
 
 pub use event_handlers::*;
+pub use material_system::*;
 pub use menu_bar::*;
 pub use playback_controls::*;
 pub use session_panel::*;
@@ -41,6 +43,7 @@ impl Plugin for UiSystemsPlugin {
                 handle_delete_session_events,
                 handle_create_session_events,
                 playback_update_system,
+                apply_material_config,
             ),
         );
     }

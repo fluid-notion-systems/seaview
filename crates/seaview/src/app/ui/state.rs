@@ -147,6 +147,9 @@ pub struct CollapsibleState {
 
     /// Whether the lighting rig section is open
     pub lighting_rig_open: bool,
+
+    /// Whether the material section is open
+    pub material_open: bool,
 }
 
 impl Default for CollapsibleState {
@@ -155,7 +158,98 @@ impl Default for CollapsibleState {
             sessions_open: true,
             network_status_open: true,
             lighting_rig_open: true,
+            material_open: true,
         }
+    }
+}
+
+/// Resource that controls the mesh material properties
+#[derive(Resource, Clone, Debug)]
+pub struct MaterialConfig {
+    /// Base color of the material
+    pub base_color: Color,
+
+    /// Perceptual roughness (0.0 = mirror, 1.0 = fully rough)
+    pub perceptual_roughness: f32,
+
+    /// Metallic factor (0.0 = dielectric, 1.0 = metal)
+    pub metallic: f32,
+
+    /// Reflectance at normal incidence (0.0 - 1.0)
+    pub reflectance: f32,
+
+    /// Emissive color and intensity
+    pub emissive: Color,
+
+    /// Emissive intensity multiplier
+    pub emissive_intensity: f32,
+
+    /// Whether to render double-sided (no backface culling)
+    pub double_sided: bool,
+
+    /// Alpha mode for transparency
+    pub alpha_mode: AlphaModeConfig,
+
+    /// Alpha cutoff (used with AlphaModeConfig::Mask)
+    pub alpha_cutoff: f32,
+}
+
+/// Simplified alpha mode for UI selection
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlphaModeConfig {
+    Opaque,
+    Mask,
+    Blend,
+}
+
+impl AlphaModeConfig {
+    pub fn all() -> &'static [AlphaModeConfig] {
+        &[
+            AlphaModeConfig::Opaque,
+            AlphaModeConfig::Mask,
+            AlphaModeConfig::Blend,
+        ]
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            AlphaModeConfig::Opaque => "Opaque",
+            AlphaModeConfig::Mask => "Mask",
+            AlphaModeConfig::Blend => "Blend",
+        }
+    }
+
+    pub fn to_alpha_mode(&self, cutoff: f32) -> AlphaMode {
+        match self {
+            AlphaModeConfig::Opaque => AlphaMode::Opaque,
+            AlphaModeConfig::Mask => AlphaMode::Mask(cutoff),
+            AlphaModeConfig::Blend => AlphaMode::Blend,
+        }
+    }
+}
+
+impl Default for MaterialConfig {
+    fn default() -> Self {
+        Self {
+            base_color: Color::srgb(0.3, 0.5, 0.8),
+            perceptual_roughness: 0.4,
+            metallic: 0.1,
+            reflectance: 0.5,
+            emissive: Color::BLACK,
+            emissive_intensity: 0.0,
+            double_sided: true,
+            alpha_mode: AlphaModeConfig::Opaque,
+            alpha_cutoff: 0.5,
+        }
+    }
+}
+
+/// Plugin for material configuration
+pub struct MaterialConfigPlugin;
+
+impl Plugin for MaterialConfigPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(MaterialConfig::default());
     }
 }
 
@@ -273,6 +367,7 @@ pub struct UiStatePlugin;
 impl Plugin for UiStatePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(UiState::new())
+            .add_plugins(MaterialConfigPlugin)
             .add_event::<CreateSessionEvent>()
             .add_event::<DeleteSessionEvent>()
             .add_event::<SwitchSessionEvent>();
