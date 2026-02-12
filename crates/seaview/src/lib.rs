@@ -8,6 +8,7 @@ pub mod lib {
     // pub mod network;
     pub mod sequence;
     pub mod session;
+    pub mod settings;
 }
 
 pub mod app {

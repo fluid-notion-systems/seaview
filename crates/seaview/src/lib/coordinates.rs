@@ -1,6 +1,7 @@
 //! Coordinate system handling for different source orientations
 
 use bevy::prelude::*;
+use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Resource)]
 pub enum SourceOrientation {
@@ -61,6 +62,17 @@ impl SourceOrientation {
             SourceOrientation::ZUp => "Z+ up, Y+ forward (CAD/GIS standard)",
             SourceOrientation::FluidX3D => "Z+ up, X+ right, Y+ forward (FluidX3D)",
             SourceOrientation::Custom(_) => "Custom transformation",
+        }
+    }
+}
+
+impl fmt::Display for SourceOrientation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SourceOrientation::YUp => write!(f, "yup"),
+            SourceOrientation::ZUp => write!(f, "zup"),
+            SourceOrientation::FluidX3D => write!(f, "fluidx3d"),
+            SourceOrientation::Custom(_) => write!(f, "custom"),
         }
     }
 }

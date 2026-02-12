@@ -8,6 +8,7 @@ use bevy_egui::{egui, EguiContexts};
 use crate::app::systems::camera::CenterOnMeshEvent;
 use crate::app::ui::state::UiState;
 use crate::lib::sequence::{SequenceAssets, SequenceEvent, SequenceManager};
+use crate::lib::settings::SaveViewEvent;
 
 /// System that renders the playback controls panel
 pub fn playback_controls_system(
@@ -15,6 +16,7 @@ pub fn playback_controls_system(
     mut ui_state: ResMut<UiState>,
     mut center_events: EventWriter<CenterOnMeshEvent>,
     mut sequence_events: EventWriter<SequenceEvent>,
+    mut save_view_events: EventWriter<SaveViewEvent>,
     time: Res<Time>,
     sequence_manager: Res<SequenceManager>,
     sequence_assets: Res<SequenceAssets>,
@@ -116,6 +118,16 @@ pub fn playback_controls_system(
                         info!("🎯 Center camera button clicked!");
                         center_events.write(CenterOnMeshEvent);
                         info!("CenterOnMeshEvent sent");
+                    }
+
+                    // Save View button
+                    if ui
+                        .button("💾")
+                        .on_hover_text("Save view (camera + playback) to seaview.toml")
+                        .clicked()
+                    {
+                        info!("💾 Save view button clicked!");
+                        save_view_events.write(SaveViewEvent);
                     }
 
                     ui.separator();

@@ -14,6 +14,9 @@ use seaview::lib::coordinates::SourceOrientation;
 use seaview::lib::sequence::{
     discovery::DiscoverSequenceRequest, LoadSequenceRequest, SequencePlugin,
 };
+use seaview::lib::settings::{
+    resolve_settings_dir, SaveViewEvent, Settings, SettingsResource,
+};
 
 fn main() {
     // Parse command line arguments
@@ -26,8 +29,43 @@ fn main() {
         }
     }
 
+    // Load per-directory settings if a path was provided
+    let settings_dir = args.path.as_ref().and_then(|p| resolve_settings_dir(p));
+    let dir_settings = settings_dir
+        .as_ref()
+        .and_then(|dir| match Settings::load_from_dir(dir) {
+            Ok(Some(s)) => {
+                info!("Loaded seaview.toml from {:?}", dir);
+                Some(s)
+            }
+            Ok(None) => {
+                info!("No seaview.toml found in {:?}, using defaults", dir);
+                None
+            }
+            Err(e) => {
+                warn!("Failed to load seaview.toml: {}", e);
+                None
+            }
+        });
+
+    // Determine source coordinates: CLI flag > seaview.toml > default
+    // clap sets default_value = "yup", so we check if the user explicitly passed it
+    let coord_string = {
+        let cli_explicit = std::env::args().any(|a| a.starts_with("--source-coordinates"));
+        if cli_explicit {
+            args.source_coordinates.clone()
+        } else if let Some(ref s) = dir_settings {
+            s.sequence
+                .as_ref()
+                .and_then(|seq| seq.source_coordinates.clone())
+                .unwrap_or_else(|| args.source_coordinates.clone())
+        } else {
+            args.source_coordinates.clone()
+        }
+    };
+
     // Parse source coordinate system
-    let source_orientation = match SourceOrientation::from_str(&args.source_coordinates) {
+    let source_orientation = match SourceOrientation::from_str(&coord_string) {
         Ok(orientation) => {
             if args.verbose {
                 info!("Using coordinate system: {}", orientation.description());
@@ -38,6 +76,12 @@ fn main() {
             error!("{}", e);
             std::process::exit(1);
         }
+    };
+
+    // Build settings resource
+    let settings_resource = SettingsResource {
+        settings: dir_settings.clone().unwrap_or_default(),
+        directory: settings_dir,
     };
 
     let mut app = App::new();
@@ -92,7 +136,9 @@ fn main() {
         .add_plugins(SeaviewUiPlugin)
         .insert_resource(args)
         .insert_resource(source_orientation)
+        .insert_resource(settings_resource)
         .add_event::<CenterOnMeshEvent>()
+        .add_event::<SaveViewEvent>()
         .add_systems(Startup, (setup, handle_input_path, setup_cursor))
         .add_systems(
             Update,
@@ -100,6 +146,7 @@ fn main() {
                 camera_controller,
                 cursor_grab_system,
                 handle_center_on_mesh,
+                handle_save_view,
                 // debug_mesh_cache_status,
             ),
         )
@@ -110,13 +157,44 @@ fn setup(
     mut commands: Commands,
     _meshes: ResMut<Assets<Mesh>>,
     _materials: ResMut<Assets<StandardMaterial>>,
+    settings_res: Res<SettingsResource>,
+    mut ui_state: ResMut<seaview::app::ui::state::UiState>,
 ) {
+    // Determine initial camera transform: seaview.toml > hardcoded default
+    let camera_transform = settings_res
+        .settings
+        .camera
+        .as_ref()
+        .map(|cam| {
+            info!(
+                "Applying camera from seaview.toml: pos={:?} rot={:?}",
+                cam.position, cam.rotation
+            );
+            cam.to_transform()
+        })
+        .unwrap_or_else(|| {
+            Transform::from_xyz(100.0, 100.0, 100.0)
+                .looking_at(Vec3::new(37.0, 37.0, 27.5), Vec3::Y)
+        });
+
     // Spawn the FPS camera
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(100.0, 100.0, 100.0).looking_at(Vec3::new(37.0, 37.0, 27.5), Vec3::Y),
+        camera_transform,
         FpsCamera::default(),
     ));
+
+    // Apply playback settings from seaview.toml
+    if let Some(ref pb) = settings_res.settings.playback {
+        if let Some(speed) = pb.speed {
+            ui_state.playback.speed = speed;
+            info!("Applied playback speed from seaview.toml: {}", speed);
+        }
+        if let Some(loop_enabled) = pb.loop_enabled {
+            ui_state.playback.loop_enabled = loop_enabled;
+            info!("Applied loop setting from seaview.toml: {}", loop_enabled);
+        }
+    }
 
     // Add a directional light for overall illumination
     commands.spawn((
@@ -163,6 +241,42 @@ fn setup_cursor(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
     if let Ok(mut window) = windows.single_mut() {
         window.cursor_options.visible = true;
         window.cursor_options.grab_mode = CursorGrabMode::None;
+    }
+}
+
+/// System that handles save view requests
+fn handle_save_view(
+    mut save_events: EventReader<SaveViewEvent>,
+    mut settings_res: ResMut<SettingsResource>,
+    camera_query: Query<&Transform, (With<Camera3d>, With<FpsCamera>)>,
+    ui_state: Res<seaview::app::ui::state::UiState>,
+    source_orientation: Res<SourceOrientation>,
+) {
+    for _event in save_events.read() {
+        if let Ok(transform) = camera_query.single() {
+            // Update settings with current camera, playback, and coordinate state
+            settings_res
+                .settings
+                .set_camera_from_transform(transform);
+            settings_res
+                .settings
+                .set_playback(ui_state.playback.speed, ui_state.playback.loop_enabled);
+            settings_res.settings.sequence =
+                Some(seaview::lib::settings::SequenceSettings {
+                    source_coordinates: Some(source_orientation.to_string()),
+                });
+
+            match settings_res.save() {
+                Ok(()) => {
+                    info!("💾 View saved to seaview.toml");
+                }
+                Err(e) => {
+                    error!("Failed to save view: {}", e);
+                }
+            }
+        } else {
+            warn!("No camera found to save");
+        }
     }
 }
 
