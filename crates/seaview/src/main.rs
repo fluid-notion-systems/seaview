@@ -2,7 +2,7 @@ use bevy::asset::io::AssetSourceBuilder;
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
-use seaview::{SeaviewUiPlugin, SessionPlugin};
+use seaview::{NightLightingPlugin, SeaviewUiPlugin, SessionPlugin};
 
 use seaview::app::cli::Args;
 use seaview::app::systems::camera::{
@@ -134,6 +134,7 @@ fn main() {
         // .add_plugins(BrpExtrasPlugin)
         .add_plugins(SessionPlugin)
         .add_plugins(SeaviewUiPlugin)
+        .add_plugins(NightLightingPlugin)
         .insert_resource(args)
         .insert_resource(source_orientation)
         .insert_resource(settings_resource)

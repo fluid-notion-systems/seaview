@@ -34,6 +34,9 @@ pub struct UiState {
 
     /// Temporary UI state (dialogs, etc)
     pub temp_state: TempUiState,
+
+    /// Collapsible section state for accordion UI
+    pub collapsible: CollapsibleState,
 }
 
 /// Playback control state
@@ -131,6 +134,29 @@ pub struct TempUiState {
 
     /// Current info message to display
     pub info_message: Option<String>,
+}
+
+/// Collapsible section state for accordion UI
+#[derive(Debug, Clone)]
+pub struct CollapsibleState {
+    /// Whether the sessions section is open
+    pub sessions_open: bool,
+
+    /// Whether the network status section is open
+    pub network_status_open: bool,
+
+    /// Whether the lighting rig section is open
+    pub lighting_rig_open: bool,
+}
+
+impl Default for CollapsibleState {
+    fn default() -> Self {
+        Self {
+            sessions_open: true,
+            network_status_open: true,
+            lighting_rig_open: true,
+        }
+    }
 }
 
 impl UiState {
