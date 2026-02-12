@@ -103,13 +103,9 @@ pub struct SequenceMeshDisplay;
 
 /// System that handles sequence load requests
 fn handle_load_requests(
-    mut commands: Commands,
     mut load_requests: EventReader<LoadSequenceRequest>,
     mut sequence_assets: ResMut<SequenceAssets>,
     asset_server: Res<AssetServer>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    existing_display: Query<Entity, With<SequenceMeshDisplay>>,
 ) {
     for request in load_requests.read() {
         info!("Loading sequence with {} frames", request.frame_paths.len());
@@ -126,10 +122,20 @@ fn handle_load_requests(
 
         // Load all frames using Bevy's asset server
         // Bevy handles parallel loading automatically
-        for path in &request.frame_paths {
-            // Convert absolute path to asset path
-            // For files outside the assets directory, we use the full path
-            let asset_path = path.to_string_lossy().to_string();
+        for (idx, path) in request.frame_paths.iter().enumerate() {
+            // Get just the filename from the path
+            let filename = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+
+            // Load using the "seq://" asset source that was registered at startup
+            let asset_path = format!("seq://{}", filename);
+
+            info!(
+                "Frame {}: Loading '{}' from path {:?}",
+                idx, asset_path, path
+            );
 
             // Use GltfAssetLabel to load just the mesh primitive
             // This correctly handles mesh indices
@@ -144,33 +150,8 @@ fn handle_load_requests(
             sequence_assets.frame_handles.push(handle);
         }
 
-        // Ensure we have a display entity
-        if existing_display.is_empty() {
-            // Create a placeholder mesh and material
-            let placeholder_mesh = meshes.add(Mesh::from(Cuboid::new(0.1, 0.1, 0.1)));
-            let material = materials.add(StandardMaterial {
-                base_color: Color::srgb(0.3, 0.5, 0.8),
-                perceptual_roughness: 0.4,
-                metallic: 0.1,
-                ..default()
-            });
-
-            let entity = commands
-                .spawn((
-                    Mesh3d(placeholder_mesh),
-                    MeshMaterial3d(material),
-                    Transform::default(),
-                    SequenceMeshDisplay,
-                    Name::new("Sequence Mesh"),
-                ))
-                .id();
-
-            sequence_assets.mesh_entity = Some(entity);
-            info!("Created mesh display entity: {:?}", entity);
-        } else {
-            // Use existing entity
-            sequence_assets.mesh_entity = existing_display.iter().next();
-        }
+        // Don't create placeholder - entity will be spawned when first frame loads
+        info!("Mesh display entity will be created when first frame loads");
 
         info!(
             "Started loading {} frames from {:?}",
@@ -179,12 +160,15 @@ fn handle_load_requests(
     }
 }
 
-/// System that tracks asset loading progress
+/// System that tracks asset loading progress and spawns mesh entity when first frame loads
 fn track_asset_loading(
+    mut commands: Commands,
     mut events: EventReader<AssetEvent<Mesh>>,
     mut sequence_assets: ResMut<SequenceAssets>,
     mut frame_loaded_events: EventWriter<FrameLoadedEvent>,
     asset_server: Res<AssetServer>,
+    sequence_manager: Res<SequenceManager>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     if !sequence_assets.loading {
         return;
@@ -196,12 +180,55 @@ fn track_asset_loading(
                 // Find which frame this corresponds to
                 for (index, handle) in sequence_assets.frame_handles.iter().enumerate() {
                     if handle.id() == *id {
+                        // Clone handle before mutable operations
+                        let handle_clone = handle.clone();
+
                         sequence_assets.loaded_count += 1;
 
                         frame_loaded_events.write(FrameLoadedEvent {
                             frame_index: index,
                             success: true,
                         });
+
+                        // Spawn entity when first frame (index 0) loads
+                        if index == 0 && sequence_assets.mesh_entity.is_none() {
+                            // Create material
+                            let material = materials.add(StandardMaterial {
+                                base_color: Color::srgb(0.3, 0.5, 0.8),
+                                perceptual_roughness: 0.4,
+                                metallic: 0.1,
+                                cull_mode: None, // Double-sided rendering
+                                ..default()
+                            });
+
+                            // Get coordinate transformation
+                            let transform = if let Some(sequence) =
+                                sequence_manager.current_sequence()
+                            {
+                                let coord_transform = sequence.source_orientation.to_transform();
+                                info!(
+                                    "Applying coordinate transformation: {}",
+                                    sequence.source_orientation.description()
+                                );
+                                coord_transform
+                            } else {
+                                Transform::default()
+                            };
+
+                            let entity = commands
+                                .spawn((
+                                    Mesh3d(handle_clone),
+                                    MeshMaterial3d(material),
+                                    transform,
+                                    SequenceMeshDisplay,
+                                    Name::new("Sequence Mesh"),
+                                ))
+                                .id();
+
+                            sequence_assets.mesh_entity = Some(entity);
+                            sequence_assets.displayed_frame = Some(0);
+                            info!("Spawned mesh display entity with first frame: {:?}", entity);
+                        }
 
                         // Log progress at intervals
                         let progress = sequence_assets.progress();
@@ -220,10 +247,6 @@ fn track_asset_loading(
                     }
                 }
             }
-            AssetEvent::Removed { id } => {
-                // Handle asset removal if needed
-                debug!("Asset removed: {:?}", id);
-            }
             _ => {}
         }
     }
@@ -237,28 +260,50 @@ fn track_asset_loading(
         );
     }
 
-    // Also check for failed loads
+    // Check for failed loads with detailed information
     if sequence_assets.loading {
         let mut failed_count = 0;
-        for handle in &sequence_assets.frame_handles {
-            if matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)) {
-                failed_count += 1;
+        let mut failed_indices = Vec::new();
+
+        for (index, handle) in sequence_assets.frame_handles.iter().enumerate() {
+            let state = asset_server.load_state(handle.id());
+            match state {
+                LoadState::Failed(ref err) => {
+                    failed_count += 1;
+                    failed_indices.push(index);
+                    if failed_count <= 3 {
+                        // Log first 3 failures in detail
+                        error!("Frame {} load failed: {:?}", index, err);
+                    }
+                }
+                LoadState::NotLoaded => {
+                    if sequence_assets.frame_handles.len() <= 10 || index % 20 == 0 {
+                        debug!("Frame {} still loading...", index);
+                    }
+                }
+                _ => {}
             }
         }
+
         if failed_count > 0 {
-            warn!("{} frames failed to load", failed_count);
+            warn!(
+                "{} frames failed to load (indices: {:?}...)",
+                failed_count,
+                &failed_indices[..failed_indices.len().min(5)]
+            );
         }
     }
 }
 
 /// System that updates the displayed mesh when the frame changes
 fn update_mesh_display(
-    sequence_assets: Res<SequenceAssets>,
+    mut sequence_assets: ResMut<SequenceAssets>,
     sequence_manager: Res<SequenceManager>,
     mut mesh_query: Query<&mut Mesh3d, With<SequenceMeshDisplay>>,
 ) {
     // Only update if we have frames and the display entity
     if sequence_assets.frame_handles.is_empty() {
+        debug!("update_mesh_display: No frame handles");
         return;
     }
 
@@ -275,10 +320,13 @@ fn update_mesh_display(
         for mut mesh_handle in mesh_query.iter_mut() {
             mesh_handle.0 = handle.clone();
         }
+        // Track which frame is now displayed
+        sequence_assets.displayed_frame = Some(current_frame);
+        debug!("Updated display to frame {}", current_frame);
     }
 }
 
-/// System that responds to frame change events
+/// System that responds to frame change events and updates the mesh
 fn handle_frame_changes(
     mut sequence_events: EventReader<SequenceEvent>,
     mut sequence_assets: ResMut<SequenceAssets>,
@@ -289,20 +337,11 @@ fn handle_frame_changes(
             SequenceEvent::FrameChanged(frame_index) => {
                 // Update displayed frame
                 if let Some(handle) = sequence_assets.get_frame(*frame_index) {
-                    for mut mesh_handle in mesh_query.iter_mut() {
+                    if let Ok(mut mesh_handle) = mesh_query.single_mut() {
                         mesh_handle.0 = handle.clone();
+                        sequence_assets.displayed_frame = Some(*frame_index);
+                        info!("Switched to frame {}", frame_index);
                     }
-                    sequence_assets.displayed_frame = Some(*frame_index);
-                    debug!("Switched to frame {}", frame_index);
-                }
-            }
-            SequenceEvent::SequenceLoaded(_) => {
-                // Display first frame when sequence loads
-                if let Some(handle) = sequence_assets.get_frame(0) {
-                    for mut mesh_handle in mesh_query.iter_mut() {
-                        mesh_handle.0 = handle.clone();
-                    }
-                    sequence_assets.displayed_frame = Some(0);
                 }
             }
             _ => {}

@@ -1,7 +1,7 @@
+use bevy::asset::io::AssetSourceBuilder;
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
-use bevy_brp_extras::BrpExtrasPlugin;
 use seaview::{SeaviewUiPlugin, SessionPlugin};
 
 use seaview::app::cli::Args;
@@ -11,7 +11,9 @@ use seaview::app::systems::camera::{
 use seaview::app::systems::diagnostics::RenderingDiagnosticsPlugin;
 
 use seaview::lib::coordinates::SourceOrientation;
-use seaview::lib::sequence::{discovery::DiscoverSequenceRequest, SequencePlugin};
+use seaview::lib::sequence::{
+    discovery::DiscoverSequenceRequest, LoadSequenceRequest, SequencePlugin,
+};
 
 fn main() {
     // Parse command line arguments
@@ -38,13 +40,54 @@ fn main() {
         }
     };
 
-    App::new()
-        .add_plugins(DefaultPlugins)
+    let mut app = App::new();
+
+    // Register asset source for the sequence directory if provided
+    if let Some(ref path) = args.path {
+        // Canonicalize to get absolute path
+        let canonical_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+
+        if canonical_path.is_dir() {
+            let path_str = canonical_path.to_string_lossy().to_string();
+            info!(
+                "Registering asset source 'seq' for sequence directory: {:?}",
+                canonical_path
+            );
+            info!("Asset source path: {}", path_str);
+            app.register_asset_source("seq", AssetSourceBuilder::platform_default(&path_str, None));
+            info!("Asset source 'seq' registered successfully");
+        } else if canonical_path.is_file() {
+            // Register parent directory for single file loads
+            if let Some(parent) = canonical_path.parent() {
+                let parent_str = parent.to_string_lossy().to_string();
+                info!(
+                    "Registering asset source 'seq' for file directory: {:?}",
+                    parent
+                );
+                info!("Asset source path: {}", parent_str);
+                app.register_asset_source(
+                    "seq",
+                    AssetSourceBuilder::platform_default(&parent_str, None),
+                );
+                info!("Asset source 'seq' registered successfully");
+            } else {
+                error!(
+                    "Could not get parent directory for file: {:?}",
+                    canonical_path
+                );
+            }
+        }
+    } else {
+        warn!("No path provided - asset source 'seq' not registered");
+        warn!("Provide a path via CLI to load meshes");
+    }
+
+    app.add_plugins(DefaultPlugins)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(LogDiagnosticsPlugin::default())
         .add_plugins(RenderingDiagnosticsPlugin)
         .add_plugins(SequencePlugin)
-        .add_plugins(BrpExtrasPlugin)
+        // .add_plugins(BrpExtrasPlugin)
         .add_plugins(SessionPlugin)
         .add_plugins(SeaviewUiPlugin)
         .insert_resource(args)
@@ -124,11 +167,11 @@ fn setup_cursor(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
 }
 
 /// System that handles the input path and decides whether to load a single file or discover a sequence
-/// TODO: Implement actual loading using Bevy's AssetServer
 fn handle_input_path(
     mut commands: Commands,
     args: Res<Args>,
     source_orientation: Res<SourceOrientation>,
+    mut load_events: EventWriter<LoadSequenceRequest>,
 ) {
     if let Some(path) = &args.path {
         if path.is_dir() {
@@ -136,11 +179,11 @@ fn handle_input_path(
             info!("Discovering sequences in directory: {:?}", path);
             commands.spawn(DiscoverSequenceRequest {
                 directory: path.clone(),
-                recursive: true,
+                recursive: false,
                 source_orientation: *source_orientation,
             });
         } else if path.is_file() {
-            // It's a single file - will be loaded when we implement new loading system
+            // It's a single file - load it directly using the sequence loader
             let ext = path
                 .extension()
                 .and_then(|e| e.to_str())
@@ -148,11 +191,17 @@ fn handle_input_path(
                 .unwrap_or_default();
 
             match ext.as_str() {
-                "glb" | "gltf" => info!(
-                    "Single glTF/GLB file: {:?} (loading not yet implemented)",
-                    path
-                ),
-                _ => info!("Single file: {:?} (loading not yet implemented)", path),
+                "glb" | "gltf" => {
+                    info!("Loading single glTF/GLB file: {:?}", path);
+                    // Load as a single-frame "sequence"
+                    // Use the seq:// asset source that was registered at startup
+                    load_events.write(LoadSequenceRequest {
+                        frame_paths: vec![path.clone()],
+                    });
+                }
+                _ => {
+                    warn!("Unsupported file type: {:?}", path);
+                }
             }
         } else {
             error!("Path does not exist: {:?}", path);

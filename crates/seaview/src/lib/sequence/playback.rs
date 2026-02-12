@@ -9,7 +9,7 @@ pub struct SequencePlaybackPlugin;
 impl Plugin for SequencePlaybackPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<KeyHoldTimer>()
-            .add_systems(Update, handle_playback_input);
+            .add_systems(Update, (handle_playback_input, advance_playback));
     }
 }
 
@@ -318,5 +318,39 @@ impl PlaybackStats {
         self.frames_played += 1;
         self.total_play_time += frame_time;
         self.average_frame_time = self.total_play_time / self.frames_played as f32;
+    }
+}
+
+/// System that automatically advances frames during playback
+fn advance_playback(
+    mut sequence_manager: ResMut<SequenceManager>,
+    mut events: EventWriter<SequenceEvent>,
+    time: Res<Time>,
+) {
+    if !sequence_manager.is_playing {
+        return;
+    }
+
+    if sequence_manager.current_sequence.is_none() {
+        return;
+    }
+
+    // Update frame timer
+    sequence_manager.frame_timer += time.delta_secs();
+
+    // Calculate frame duration based on playback speed
+    let frame_duration = 1.0 / sequence_manager.playback_fps;
+
+    if sequence_manager.frame_timer >= frame_duration {
+        sequence_manager.frame_timer -= frame_duration;
+
+        // Advance to next frame
+        if sequence_manager.next_frame() {
+            events.write(SequenceEvent::FrameChanged(sequence_manager.current_frame));
+        } else {
+            // Reached end of sequence, stop playback
+            sequence_manager.is_playing = false;
+            events.write(SequenceEvent::PlaybackStopped);
+        }
     }
 }

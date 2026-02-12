@@ -32,8 +32,11 @@ impl SourceOrientation {
             }
             SourceOrientation::FluidX3D => {
                 // FluidX3D typically uses Z-up with X-right and Y-forward
-                // This is the same as ZUp
-                Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
+                // Rotate -90° around X to convert Z-up to Y-up, then 180° around Y to flip
+                Transform::from_rotation(
+                    Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)
+                        * Quat::from_rotation_z(std::f32::consts::PI),
+                )
             }
             SourceOrientation::Custom(mat) => Transform::from_matrix(Mat4::from_mat3(mat)),
         }
