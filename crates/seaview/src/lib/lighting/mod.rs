@@ -26,7 +26,8 @@ pub struct NightLightingConfig {
     /// Height of lights above sea level (in meters)
     pub height: f32,
 
-    /// Cone angle for spotlights (in degrees)
+    /// Full cone angle for spotlights (in degrees).
+    /// Internally halved to produce the SpotLight outer_angle (half-angle), clamped to 90°.
     pub cone_angle: f32,
 
     /// Placement algorithm for distributing lights
@@ -63,9 +64,9 @@ impl Default for NightLightingConfig {
             placement_algorithm: PlacementAlgorithm::UniformGrid,
             enabled: true,
             global_lighting_enabled: true,
-            intensity: 1000.0,
+            intensity: 800_000.0,
             color: Color::srgb(1.0, 0.95, 0.9), // Warm white
-            range: 200.0,
+            range: 500.0,
             show_markers: true,
             marker_size: 0.5,
         }

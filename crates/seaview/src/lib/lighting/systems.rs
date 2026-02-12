@@ -4,8 +4,21 @@
 //! despawning night lights based on the NightLightingConfig resource.
 
 use bevy::prelude::*;
+use std::f32::consts::FRAC_PI_2;
 
 use super::{GlobalLight, NightLight, NightLightMarker, NightLightingConfig};
+
+/// Convert the UI cone angle (full angle in degrees) to a valid SpotLight outer_angle
+/// (half-angle in radians, clamped to PI/2 max).
+fn cone_to_outer_angle(cone_angle_degrees: f32) -> f32 {
+    let half_angle_rad = (cone_angle_degrees * 0.5).to_radians();
+    half_angle_rad.min(FRAC_PI_2)
+}
+
+/// Compute inner_angle as 80% of outer_angle
+fn cone_to_inner_angle(cone_angle_degrees: f32) -> f32 {
+    cone_to_outer_angle(cone_angle_degrees) * 0.8
+}
 
 /// System that updates night lights based on configuration changes
 ///
@@ -96,8 +109,8 @@ fn spawn_lights(
                 intensity: config.intensity,
                 color: config.color,
                 range: config.range,
-                outer_angle: config.cone_angle.to_radians(),
-                inner_angle: (config.cone_angle * 0.8).to_radians(),
+                outer_angle: cone_to_outer_angle(config.cone_angle),
+                inner_angle: cone_to_inner_angle(config.cone_angle),
                 shadows_enabled: true,
                 ..default()
             },
@@ -137,8 +150,8 @@ fn update_light_transform(
                 intensity: config.intensity,
                 color: config.color,
                 range: config.range,
-                outer_angle: config.cone_angle.to_radians(),
-                inner_angle: (config.cone_angle * 0.8).to_radians(),
+                outer_angle: cone_to_outer_angle(config.cone_angle),
+                inner_angle: cone_to_inner_angle(config.cone_angle),
                 shadows_enabled: true,
                 ..default()
             },

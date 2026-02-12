@@ -338,7 +338,7 @@ fn render_lighting_rig_controls(ui: &mut egui::Ui, config: &mut NightLightingCon
     let mut log_intensity = config.intensity.log10();
     if ui
         .add(
-            egui::Slider::new(&mut log_intensity, 1.0..=5.0) // 10 to 100,000
+            egui::Slider::new(&mut log_intensity, 1.0..=7.0) // 10 to 10,000,000
                 .custom_formatter(|value, _| format!("{:.0}", 10_f64.powf(value)))
                 .suffix(""),
         )
@@ -353,7 +353,7 @@ fn render_lighting_rig_controls(ui: &mut egui::Ui, config: &mut NightLightingCon
     ui.horizontal(|ui| {
         ui.label("Range:");
     });
-    ui.add(egui::Slider::new(&mut config.range, 10.0..=1000.0).suffix(" m"));
+    ui.add(egui::Slider::new(&mut config.range, 10.0..=5000.0).suffix(" m"));
 
     ui.add_space(5.0);
 
