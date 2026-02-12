@@ -37,9 +37,10 @@ pub fn update_night_lights(
         return;
     }
 
-    // Get current number of lights
+    // Get current number of lights and markers
     let current_count = existing_lights.iter().count();
     let target_count = config.num_lights;
+    let marker_count = existing_markers.iter().count();
 
     // If count changed, despawn all and respawn
     // (In the future, we could be smarter about only adding/removing what's needed)
@@ -58,8 +59,15 @@ pub fn update_night_lights(
             update_light_transform(&mut commands, entity, light.index, &config);
         }
 
-        // Update marker visibility and size
-        update_markers(&mut commands, &mut meshes, &existing_markers, &config);
+        // Update marker visibility, size, and positions
+        update_markers(
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            &existing_markers,
+            &config,
+            marker_count,
+        );
     }
 }
 
@@ -177,23 +185,51 @@ fn spawn_marker(
     ));
 }
 
-/// Update marker visibility and size
+/// Update marker visibility, size, and positions
 fn update_markers(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
     existing_markers: &Query<(Entity, &NightLightMarker)>,
     config: &NightLightingConfig,
+    marker_count: usize,
 ) {
     if !config.show_markers {
         // Hide markers by despawning them
         for (entity, _) in existing_markers.iter() {
             commands.entity(entity).despawn();
         }
+    } else if marker_count == 0 && config.num_lights > 0 {
+        // Markers were toggled on - spawn them
+        let bounds_min = Vec2::new(-100.0, -100.0);
+        let bounds_max = Vec2::new(100.0, 100.0);
+
+        let positions = config
+            .placement_algorithm
+            .calculate_positions(config.num_lights, bounds_min, bounds_max);
+
+        for (index, pos) in positions.iter().enumerate() {
+            spawn_marker(commands, meshes, materials, *pos, config.height, index, config);
+        }
     } else {
-        // Update marker meshes if size changed
+        // Calculate scene bounds (TODO: get from actual scene data)
+        let bounds_min = Vec2::new(-100.0, -100.0);
+        let bounds_max = Vec2::new(100.0, 100.0);
+
+        // Calculate light positions
+        let positions = config
+            .placement_algorithm
+            .calculate_positions(config.num_lights, bounds_min, bounds_max);
+
+        // Update marker meshes, positions, and materials
         let new_sphere = meshes.add(Sphere::new(config.marker_size));
-        for (entity, _) in existing_markers.iter() {
-            commands.entity(entity).insert(Mesh3d(new_sphere.clone()));
+        for (entity, marker) in existing_markers.iter() {
+            if let Some(pos) = positions.get(marker.light_index) {
+                commands.entity(entity).insert((
+                    Mesh3d(new_sphere.clone()),
+                    Transform::from_xyz(pos.x, config.height, pos.y),
+                ));
+            }
         }
     }
 }
