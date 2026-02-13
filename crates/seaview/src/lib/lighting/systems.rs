@@ -72,6 +72,12 @@ pub fn update_night_lights(
         return;
     }
 
+    // Don't spawn lights until mesh dimensions are computed
+    // This avoids positioning at the fallback ±100 location
+    if mesh_dims.min.is_none() || mesh_dims.max.is_none() {
+        return;
+    }
+
     // Only update if config or mesh dims have changed
     if !config.is_changed() && !mesh_dims.is_changed() {
         return;
