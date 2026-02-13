@@ -311,6 +311,7 @@ fn handle_input_path(
     args: Res<Args>,
     source_orientation: Res<SourceOrientation>,
     mut load_events: MessageWriter<LoadSequenceRequest>,
+    mut sequence_manager: ResMut<seaview::sequence::SequenceManager>,
 ) {
     if let Some(path) = &args.path {
         if path.is_dir() {
@@ -332,6 +333,25 @@ fn handle_input_path(
             match ext.as_str() {
                 "glb" | "gltf" | "stl" => {
                     info!("Loading single mesh file: {:?}", path);
+
+                    // Create a minimal sequence so coordinate transform is applied
+                    let filename = path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("mesh")
+                        .to_string();
+                    let base_dir = path.parent().unwrap_or(path.as_path()).to_path_buf();
+
+                    let mut sequence = seaview::sequence::Sequence::new(
+                        filename.clone(),
+                        base_dir,
+                        "single_file".to_string(),
+                        *source_orientation,
+                    );
+                    sequence.add_frame(seaview::sequence::FrameInfo::new(path.clone(), 0));
+
+                    info!("Using coordinate system: {}", source_orientation.description());
+                    sequence_manager.load_sequence(sequence);
+
                     // Load as a single-frame "sequence"
                     // Use the seq:// asset source that was registered at startup
                     load_events.write(LoadSequenceRequest {
