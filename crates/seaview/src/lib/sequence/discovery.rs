@@ -293,7 +293,7 @@ mod tests {
         // Should find one sequence
         assert_eq!(sequences.len(), 1);
         let sequence = &sequences[0];
-        assert_eq!(sequence.name, "simulation_");
+        assert_eq!(sequence.name, "simulation");
         assert_eq!(sequence.frame_count(), 3);
     }
 }

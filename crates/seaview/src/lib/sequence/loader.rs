@@ -1,8 +1,16 @@
 //! Mesh sequence loading using Bevy's native asset system
 //!
-//! This module provides loading functionality for GLB/glTF mesh sequences
-//! using Bevy's built-in AssetServer and GltfAssetLabel for proper mesh loading
-//! with correct index handling.
+//! This module provides loading functionality for mesh sequences supporting
+//! multiple file formats:
+//!
+//! - **glTF / GLB**: Loaded via Bevy's built-in `bevy_gltf` crate using
+//!   [`GltfAssetLabel`] to extract the first mesh primitive.
+//! - **STL**: Loaded directly as [`Mesh`] assets via the custom
+//!   [`StlLoader`](crate::lib::asset_loaders::stl_loader::StlLoader) registered
+//!   by [`AssetLoadersPlugin`](crate::lib::asset_loaders::AssetLoadersPlugin).
+//!
+//! File format is detected by extension at load time so that a single sequence
+//! can only contain one format (mixing is not supported).
 
 use bevy::asset::{AssetEvent, LoadState};
 use bevy::gltf::GltfAssetLabel;
@@ -10,6 +18,34 @@ use bevy::prelude::*;
 use std::path::PathBuf;
 
 use super::{SequenceEvent, SequenceManager};
+
+/// Recognised mesh file formats for sequence loading.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MeshFileFormat {
+    /// STL (binary or ASCII) – loaded directly as [`Mesh`] via our custom loader.
+    Stl,
+    /// glTF 2.0 text format – loaded via Bevy's gltf crate.
+    Gltf,
+    /// glTF 2.0 binary container – loaded via Bevy's gltf crate.
+    Glb,
+}
+
+impl MeshFileFormat {
+    /// Try to detect the format from a file extension string (case-insensitive).
+    pub fn from_extension(ext: &str) -> Option<Self> {
+        match ext.to_ascii_lowercase().as_str() {
+            "stl" => Some(Self::Stl),
+            "gltf" => Some(Self::Gltf),
+            "glb" => Some(Self::Glb),
+            _ => None,
+        }
+    }
+
+    /// Returns true if this format is a glTF variant (gltf or glb).
+    pub fn is_gltf(&self) -> bool {
+        matches!(self, Self::Gltf | Self::Glb)
+    }
+}
 
 /// Plugin for mesh sequence loading
 pub struct SequenceLoaderPlugin;
@@ -48,6 +84,8 @@ pub struct SequenceAssets {
     pub mesh_entity: Option<Entity>,
     /// Currently displayed frame index
     pub displayed_frame: Option<usize>,
+    /// Detected file format for this sequence (set on first load request)
+    pub format: Option<MeshFileFormat>,
 }
 
 impl SequenceAssets {
@@ -58,6 +96,7 @@ impl SequenceAssets {
         self.total_frames = 0;
         self.loading = false;
         self.displayed_frame = None;
+        self.format = None;
         // Don't reset mesh_entity - we'll reuse it
     }
 
@@ -101,6 +140,71 @@ pub struct LoadSequenceRequest {
 #[derive(Component)]
 pub struct SequenceMeshDisplay;
 
+// ---------------------------------------------------------------------------
+// Helper: derive the asset path string for a given frame file
+// ---------------------------------------------------------------------------
+
+/// Build the Bevy asset path for one frame.
+///
+/// For **STL** files the path is simply `seq://<filename>` – our custom
+/// [`StlLoader`](crate::lib::asset_loaders::stl_loader::StlLoader) is
+/// registered for the `.stl` extension so the asset server routes it
+/// automatically.
+///
+/// For **glTF / GLB** files we use [`GltfAssetLabel::Primitive`] to request
+/// the first mesh primitive (`mesh 0, primitive 0`), which gives back a
+/// `Handle<Mesh>`.
+fn load_mesh_handle(
+    asset_server: &AssetServer,
+    filename: &str,
+    format: MeshFileFormat,
+) -> Handle<Mesh> {
+    let asset_path = format!("seq://{}", filename);
+
+    match format {
+        MeshFileFormat::Stl => {
+            // The StlLoader registered for ".stl" will produce a Mesh directly.
+            asset_server.load(asset_path)
+        }
+        MeshFileFormat::Gltf | MeshFileFormat::Glb => {
+            // Use GltfAssetLabel to extract Mesh 0 / Primitive 0.
+            asset_server.load(
+                GltfAssetLabel::Primitive {
+                    mesh: 0,
+                    primitive: 0,
+                }
+                .from_asset(asset_path),
+            )
+        }
+    }
+}
+
+/// Detect format from the first path in the request and log a warning if any
+/// frame has a different extension.
+fn detect_sequence_format(paths: &[PathBuf]) -> Option<MeshFileFormat> {
+    let first = paths.first()?;
+    let ext = first.extension()?.to_str()?;
+    let format = MeshFileFormat::from_extension(ext)?;
+
+    // Warn about mixed extensions (we don't support mixing formats).
+    for (i, p) in paths.iter().enumerate().skip(1) {
+        if let Some(other_ext) = p.extension().and_then(|e| e.to_str()) {
+            if MeshFileFormat::from_extension(other_ext) != Some(format) {
+                warn!(
+                    "Frame {} has extension '{}' but sequence format is {:?} – it may fail to load",
+                    i, other_ext, format
+                );
+            }
+        }
+    }
+
+    Some(format)
+}
+
+// ---------------------------------------------------------------------------
+// Systems
+// ---------------------------------------------------------------------------
+
 /// System that handles sequence load requests
 fn handle_load_requests(
     mut load_requests: MessageReader<LoadSequenceRequest>,
@@ -110,52 +214,59 @@ fn handle_load_requests(
     for request in load_requests.read() {
         info!("Loading sequence with {} frames", request.frame_paths.len());
 
+        // Detect file format from the first frame.
+        let format = match detect_sequence_format(&request.frame_paths) {
+            Some(fmt) => {
+                info!("Detected sequence format: {:?}", fmt);
+                fmt
+            }
+            None => {
+                let first = request.frame_paths.first();
+                let ext = first
+                    .and_then(|p| p.extension())
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("<none>");
+                error!(
+                    "Unsupported mesh file extension '{}' – cannot load sequence",
+                    ext
+                );
+                continue;
+            }
+        };
+
         // Reset assets for new sequence
         sequence_assets.reset();
         sequence_assets.total_frames = request.frame_paths.len();
         sequence_assets.loading = true;
+        sequence_assets.format = Some(format);
 
         // Store base path from first frame
         if let Some(first_path) = request.frame_paths.first() {
             sequence_assets.base_path = first_path.parent().map(|p| p.to_path_buf());
         }
 
-        // Load all frames using Bevy's asset server
-        // Bevy handles parallel loading automatically
+        // Load all frames using Bevy's asset server.
+        // Bevy handles parallel / async loading automatically.
         for (idx, path) in request.frame_paths.iter().enumerate() {
-            // Get just the filename from the path
             let filename = path
                 .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("unknown");
 
-            // Load using the "seq://" asset source that was registered at startup
-            let asset_path = format!("seq://{}", filename);
-
             info!(
-                "Frame {}: Loading '{}' from path {:?}",
-                idx, asset_path, path
+                "Frame {}: Loading '{}' as {:?} from path {:?}",
+                idx, filename, format, path
             );
 
-            // Use GltfAssetLabel to load just the mesh primitive
-            // This correctly handles mesh indices
-            let handle: Handle<Mesh> = asset_server.load(
-                GltfAssetLabel::Primitive {
-                    mesh: 0,
-                    primitive: 0,
-                }
-                .from_asset(asset_path),
-            );
-
+            let handle = load_mesh_handle(&asset_server, filename, format);
             sequence_assets.frame_handles.push(handle);
         }
 
-        // Don't create placeholder - entity will be spawned when first frame loads
         info!("Mesh display entity will be created when first frame loads");
 
         info!(
-            "Started loading {} frames from {:?}",
-            sequence_assets.total_frames, sequence_assets.base_path
+            "Started loading {} {:?} frames from {:?}",
+            sequence_assets.total_frames, format, sequence_assets.base_path
         );
     }
 }

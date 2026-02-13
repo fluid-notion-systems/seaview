@@ -4,6 +4,7 @@
 //! including network communication for real-time mesh streaming.
 
 pub mod lib {
+    pub mod asset_loaders;
     pub mod coordinates;
     pub mod lighting;
     pub mod mesh_info;
@@ -25,5 +26,6 @@ pub use lib::coordinates;
 pub use lib::lighting::{self, NightLightingConfig, NightLightingPlugin};
 pub use lib::mesh_info::{MeshDimensions, MeshInfoPlugin, RecomputeMeshBounds};
 // pub use lib::network::{self, MeshReceiver, ReceivedMesh};
+pub use lib::asset_loaders::{self, AssetLoadersPlugin};
 pub use lib::sequence;
 pub use lib::session::{self, Session, SessionManager, SessionPlugin};

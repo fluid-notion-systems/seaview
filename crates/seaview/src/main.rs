@@ -4,7 +4,7 @@ use bevy::pbr::{DefaultOpaqueRendererMethod, ScreenSpaceReflections};
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 use seaview::lib::lighting::GlobalLight;
-use seaview::{MeshDimensions, MeshInfoPlugin, NightLightingPlugin, SeaviewUiPlugin, SessionPlugin};
+use seaview::{AssetLoadersPlugin, MeshDimensions, MeshInfoPlugin, NightLightingPlugin, SeaviewUiPlugin, SessionPlugin};
 
 use seaview::app::cli::Args;
 use seaview::app::systems::camera::{
@@ -130,6 +130,7 @@ fn main() {
 
     app.insert_resource(DefaultOpaqueRendererMethod::deferred())
         .add_plugins(DefaultPlugins)
+        .add_plugins(AssetLoadersPlugin)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(LogDiagnosticsPlugin::default())
         .add_plugins(RenderingDiagnosticsPlugin)
@@ -329,8 +330,8 @@ fn handle_input_path(
                 .unwrap_or_default();
 
             match ext.as_str() {
-                "glb" | "gltf" => {
-                    info!("Loading single glTF/GLB file: {:?}", path);
+                "glb" | "gltf" | "stl" => {
+                    info!("Loading single mesh file: {:?}", path);
                     // Load as a single-frame "sequence"
                     // Use the seq:// asset source that was registered at startup
                     load_events.write(LoadSequenceRequest {
@@ -338,7 +339,7 @@ fn handle_input_path(
                     });
                 }
                 _ => {
-                    warn!("Unsupported file type: {:?}", path);
+                    warn!("Unsupported file type '{}': {:?}", ext, path);
                 }
             }
         } else {
