@@ -14,7 +14,7 @@ pub struct Args {
     pub verbose: bool,
 
     /// Source coordinate system: 'yup' (graphics/Bevy default), 'zup' (CAD/GIS), 'fluidx3d' (CFD)
-    #[arg(long, default_value = "yup", value_name = "SYSTEM")]
+    #[arg(short = 's', long, default_value = "yup", value_name = "SYSTEM")]
     pub source_coordinates: String,
 
     /// Enable network mesh receiving on the specified port
