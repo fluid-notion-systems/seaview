@@ -378,6 +378,14 @@ fn render_lighting_rig_controls(ui: &mut egui::Ui, config: &mut NightLightingCon
     }
 
     ui.add_space(5.0);
+
+    // Cone angle slider
+    ui.horizontal(|ui| {
+        ui.label("Cone Angle:");
+    });
+    ui.add(egui::Slider::new(&mut config.cone_angle, 5.0..=180.0).suffix("°"));
+
+    ui.add_space(5.0);
     ui.separator();
 
     // Light properties section

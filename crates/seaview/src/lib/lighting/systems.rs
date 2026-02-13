@@ -46,43 +46,6 @@ fn compute_placement_bounds(mesh_dims: &MeshDimensions, coverage_pct: f32) -> (V
     }
 }
 
-/// Auto-compute the full cone angle (degrees) so each light's cone covers its
-/// ground-level cell with ~15% overlap for seamless illumination.
-///
-/// For a grid of `num_lights` spread across `bounds_min..bounds_max` at the
-/// given `height`:
-///
-/// 1. Estimate cell size from bounds area / num_lights.
-/// 2. Half-diagonal of the cell = radius the cone must reach at ground level.
-/// 3. half_angle = atan(radius / height), doubled → full cone angle.
-/// 4. An overlap factor (1.15) prevents dark seams between cells.
-///
-/// Result is clamped to [10°, 170°].
-fn auto_cone_angle(
-    num_lights: usize,
-    bounds_min: Vec2,
-    bounds_max: Vec2,
-    height: f32,
-) -> f32 {
-    if num_lights == 0 || height.abs() < f32::EPSILON {
-        return 60.0; // sensible default
-    }
-
-    let size = bounds_max - bounds_min;
-    let area = size.x * size.y;
-    // Approximate each cell as a square with this side length
-    let cell_side = (area / num_lights as f32).sqrt();
-    // Half-diagonal of the cell — the furthest corner from the cell centre
-    let half_diag = cell_side * 0.5 * std::f32::consts::SQRT_2;
-    // Overlap factor so adjacent cones blend instead of leaving dark seams
-    let reach = half_diag * 1.15;
-
-    let half_angle_rad = (reach / height.abs()).atan();
-    let full_angle_deg = half_angle_rad.to_degrees() * 2.0;
-
-    full_angle_deg.clamp(10.0, 170.0)
-}
-
 /// System that updates night lights based on configuration changes
 ///
 /// This system:
@@ -165,9 +128,6 @@ fn spawn_lights(
 ) {
     let (bounds_min, bounds_max) = compute_placement_bounds(mesh_dims, config.coverage_pct);
 
-    // Auto-compute cone angle so each light covers its cell
-    let cone_angle = auto_cone_angle(config.num_lights, bounds_min, bounds_max, config.height);
-
     // Calculate light positions using the configured algorithm
     let positions = config
         .placement_algorithm
@@ -175,15 +135,15 @@ fn spawn_lights(
 
     // Spawn each light
     for (index, pos) in positions.iter().enumerate() {
-        let transform = calculate_light_transform(*pos, config.height);
+        let transform = calculate_light_transform(*pos, config.height, config.cone_angle);
 
         commands.spawn((
             SpotLight {
                 intensity: config.intensity,
                 color: config.color,
                 range: config.range,
-                outer_angle: cone_to_outer_angle(cone_angle),
-                inner_angle: cone_to_inner_angle(cone_angle),
+                outer_angle: cone_to_outer_angle(config.cone_angle),
+                inner_angle: cone_to_inner_angle(config.cone_angle),
                 shadows_enabled: true,
                 ..default()
             },
@@ -208,16 +168,13 @@ fn update_light_transform(
 ) {
     let (bounds_min, bounds_max) = compute_placement_bounds(mesh_dims, config.coverage_pct);
 
-    // Auto-compute cone angle so each light covers its cell
-    let cone_angle = auto_cone_angle(config.num_lights, bounds_min, bounds_max, config.height);
-
     // Calculate light positions
     let positions = config
         .placement_algorithm
         .calculate_positions(config.num_lights, bounds_min, bounds_max);
 
     if let Some(pos) = positions.get(index) {
-        let transform = calculate_light_transform(*pos, config.height);
+        let transform = calculate_light_transform(*pos, config.height, config.cone_angle);
 
         commands.entity(entity).insert((
             transform,
@@ -225,8 +182,8 @@ fn update_light_transform(
                 intensity: config.intensity,
                 color: config.color,
                 range: config.range,
-                outer_angle: cone_to_outer_angle(cone_angle),
-                inner_angle: cone_to_inner_angle(cone_angle),
+                outer_angle: cone_to_outer_angle(config.cone_angle),
+                inner_angle: cone_to_inner_angle(config.cone_angle),
                 shadows_enabled: true,
                 ..default()
             },
@@ -235,7 +192,7 @@ fn update_light_transform(
 }
 
 /// Calculate transform for a light at the given XZ position
-fn calculate_light_transform(pos: Vec2, height: f32) -> Transform {
+fn calculate_light_transform(pos: Vec2, height: f32, _cone_angle: f32) -> Transform {
     let translation = Vec3::new(pos.x, height, pos.y);
 
     // Point straight down — looking_at a point directly below
