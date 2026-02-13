@@ -461,30 +461,44 @@ fn render_lighting_rig_controls(ui: &mut egui::Ui, config: &mut NightLightingCon
 }
 
 /// Render an interactive 2D top-down light map showing the mesh footprint and light positions.
+///
+/// The view is anchored to the mesh footprint so the mesh outline stays stable
+/// and the light dots visually move when coverage changes. The widget aspect
+/// ratio matches the mesh X:Z ratio.
 fn render_light_map(ui: &mut egui::Ui, config: &mut NightLightingConfig, mesh_dims: &MeshDimensions) {
-    // Compute world-space placement bounds
-    let scale = config.coverage_pct / 100.0;
-    let (world_min, world_max) = if let (Some(mn), Some(mx)) = (mesh_dims.min, mesh_dims.max) {
-        let cx = (mn.x + mx.x) * 0.5;
-        let cz = (mn.z + mx.z) * 0.5;
-        let hx = (mx.x - mn.x) * 0.5 * scale;
-        let hz = (mx.z - mn.z) * 0.5 * scale;
-        (egui::Vec2::new(cx - hx, cz - hz), egui::Vec2::new(cx + hx, cz + hz))
-    } else {
-        let f = 100.0 * scale;
-        (egui::Vec2::new(-f, -f), egui::Vec2::new(f, f))
-    };
-
-    // Mesh footprint (unscaled) for drawing the outline
+    // --- Mesh footprint (always 100% bounds) ---
     let (mesh_min, mesh_max) = if let (Some(mn), Some(mx)) = (mesh_dims.min, mesh_dims.max) {
         (egui::Vec2::new(mn.x, mn.z), egui::Vec2::new(mx.x, mx.z))
     } else {
         (egui::Vec2::new(-100.0, -100.0), egui::Vec2::new(100.0, 100.0))
     };
 
-    // Widget size — square, as wide as the panel allows
-    let available = ui.available_width().min(280.0);
-    let map_size = egui::Vec2::splat(available);
+    // --- Coverage bounds (where the lights actually are) ---
+    let scale = config.coverage_pct / 100.0;
+    let mesh_centre = (mesh_min + mesh_max) * 0.5;
+    let mesh_half = (mesh_max - mesh_min) * 0.5;
+    let cov_min = mesh_centre - mesh_half * scale;
+    let cov_max = mesh_centre + mesh_half * scale;
+
+    // --- Stable view bounds: union of mesh + coverage, plus 10% padding ---
+    let view_min = egui::Vec2::new(mesh_min.x.min(cov_min.x), mesh_min.y.min(cov_min.y));
+    let view_max = egui::Vec2::new(mesh_max.x.max(cov_max.x), mesh_max.y.max(cov_max.y));
+    let view_centre = (view_min + view_max) * 0.5;
+    let view_half = (view_max - view_min) * 0.5 * 1.1; // 10% padding
+    let view_min = view_centre - view_half;
+    let view_max = view_centre + view_half;
+    let view_extent = view_max - view_min;
+
+    // --- Widget size: match mesh X:Z aspect ratio, fit panel width ---
+    let available_w = ui.available_width().min(280.0);
+    let aspect = if view_extent.x.abs() > f32::EPSILON {
+        view_extent.y / view_extent.x
+    } else {
+        1.0
+    };
+    // Clamp aspect so the widget doesn't get absurdly tall or short
+    let aspect = aspect.clamp(0.3, 3.0);
+    let map_size = egui::Vec2::new(available_w, available_w * aspect);
 
     let (response, painter) = ui.allocate_painter(map_size, egui::Sense::click_and_drag());
     let rect = response.rect;
@@ -492,21 +506,18 @@ fn render_light_map(ui: &mut egui::Ui, config: &mut NightLightingConfig, mesh_di
     // Background
     painter.rect_filled(rect, 2.0, egui::Color32::from_gray(30));
 
-    // --- coordinate mapping helpers ---
-    // Map world XZ → widget pixel position.  We add a small margin so dots
-    // at the edges aren't clipped.
-    let world_extent = world_max - world_min;
+    // --- coordinate mapping: world XZ → widget pixel ---
     let margin = 8.0;
     let draw_rect = rect.shrink(margin);
 
     let world_to_screen = |wx: f32, wz: f32| -> egui::Pos2 {
-        let nx = if world_extent.x.abs() > f32::EPSILON {
-            (wx - world_min.x) / world_extent.x
+        let nx = if view_extent.x.abs() > f32::EPSILON {
+            (wx - view_min.x) / view_extent.x
         } else {
             0.5
         };
-        let nz = if world_extent.y.abs() > f32::EPSILON {
-            (wz - world_min.y) / world_extent.y
+        let nz = if view_extent.y.abs() > f32::EPSILON {
+            (wz - view_min.y) / view_extent.y
         } else {
             0.5
         };
@@ -516,7 +527,7 @@ fn render_light_map(ui: &mut egui::Ui, config: &mut NightLightingConfig, mesh_di
         )
     };
 
-    // Draw mesh footprint rectangle
+    // Draw mesh footprint rectangle (stable anchor)
     let mesh_tl = world_to_screen(mesh_min.x, mesh_min.y);
     let mesh_br = world_to_screen(mesh_max.x, mesh_max.y);
     painter.rect_stroke(
@@ -526,9 +537,21 @@ fn render_light_map(ui: &mut egui::Ui, config: &mut NightLightingConfig, mesh_di
         egui::StrokeKind::Outside,
     );
 
+    // Draw coverage bounds outline when different from mesh
+    if (scale - 1.0).abs() > 0.01 {
+        let cov_tl = world_to_screen(cov_min.x, cov_min.y);
+        let cov_br = world_to_screen(cov_max.x, cov_max.y);
+        painter.rect_stroke(
+            egui::Rect::from_two_pos(cov_tl, cov_br),
+            1.0,
+            egui::Stroke::new(1.0, egui::Color32::from_rgba_unmultiplied(255, 200, 80, 80)),
+            egui::StrokeKind::Outside,
+        );
+    }
+
     // Compute light positions via the placement algorithm
-    let bounds_min_bevy = bevy::prelude::Vec2::new(world_min.x, world_min.y);
-    let bounds_max_bevy = bevy::prelude::Vec2::new(world_max.x, world_max.y);
+    let bounds_min_bevy = bevy::prelude::Vec2::new(cov_min.x, cov_min.y);
+    let bounds_max_bevy = bevy::prelude::Vec2::new(cov_max.x, cov_max.y);
     let positions = config
         .placement_algorithm
         .calculate_positions(config.num_lights, bounds_min_bevy, bounds_max_bevy);
@@ -547,13 +570,12 @@ fn render_light_map(ui: &mut egui::Ui, config: &mut NightLightingConfig, mesh_di
         painter.circle_stroke(screen_pos, dot_radius, egui::Stroke::new(1.0, egui::Color32::WHITE));
     }
 
-    // Label with world extents
-    let w = world_extent.x;
-    let h = world_extent.y;
+    // Label with mesh dimensions
+    let mesh_ext = mesh_max - mesh_min;
     painter.text(
         rect.left_bottom() + egui::Vec2::new(2.0, -2.0),
         egui::Align2::LEFT_BOTTOM,
-        format!("{:.0}×{:.0} m", w, h),
+        format!("{:.0}×{:.0} m", mesh_ext.x, mesh_ext.y),
         egui::FontId::proportional(10.0),
         egui::Color32::from_gray(140),
     );
